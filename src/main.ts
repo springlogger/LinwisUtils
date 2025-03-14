@@ -11,8 +11,8 @@ if (started) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -29,6 +29,8 @@ const createWindow = () => {
 
   ipcMain.on('openDialog', async () => {
     const pathToObject = await dialog.showOpenDialog({properties: ['openFile']});
+
+    if (!pathToObject.filePaths[0]) return;
 
     fs.readFile(pathToObject.filePaths[0], (err, data) => {
       if (err) {

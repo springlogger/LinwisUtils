@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import ObjectViewer from './components/ObjectViewer.vue';
 import SideBar from './components/SideBar.vue';
+import ObjectViewerGUI from './components/ObjectViewerGUI.vue';
 
 const selectedPage = ref<string>('Editor');
 
@@ -14,7 +15,11 @@ const selectedPage = ref<string>('Editor');
 
     <SideBar v-model:selectedPage="selectedPage" />
 
-    <ObjectViewer v-show="selectedPage === 'Editor'"/>
+    <div v-show="selectedPage === 'Editor'">
+      <ObjectViewer />
+      <ObjectViewerGUI />
+    </div>
+    
     <div v-show="selectedPage !== 'Editor'">
       Test
     </div>
