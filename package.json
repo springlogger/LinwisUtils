@@ -31,7 +31,6 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "@vitejs/plugin-vue": "^5.2.1",
-    "blob-polyfill": "^9.0.20240710",
     "electron": "35.0.0",
     "eslint": "^8.57.1",
     "eslint-plugin-import": "^2.31.0",
@@ -40,6 +39,8 @@
     "vite": "^5.4.14"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/vue-fontawesome": "^3.0.8",
     "@tailwindcss/postcss": "^4.0.9",
     "@types/three": "^0.174.0",
     "@vueuse/core": "^12.8.0",

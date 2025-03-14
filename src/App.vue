@@ -1,21 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { shallowRef } from 'vue';
 import ObjectViewer from './components/ObjectViewer.vue';
+import SideBar from './components/SideBar.vue';
 
-const objectBlob = ref<Buffer<ArrayBufferLike>>();
+const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>();
 
 function openDialog() {
   windowAPI.openDialog();
 }
 
 windowAPI.dialogResponse((_, response) => {
-  objectBlob.value = response;
+  objectBuffer.value = response;
 })
 
 </script>
 
 <template>
-  <button @click="openDialog">123</button>
+  <!-- <button @click="openDialog">123</button> -->
 
-  <ObjectViewer :object-blob="objectBlob" />
+  <SideBar />
+
+  <ObjectViewer :object-buffer="objectBuffer" />
 </template>

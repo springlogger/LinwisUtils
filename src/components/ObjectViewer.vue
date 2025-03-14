@@ -9,7 +9,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 const props = defineProps<{
-    objectBlob?: Buffer<ArrayBufferLike>
+    objectBuffer?: Buffer<ArrayBufferLike>
 }>();
 
 const threeContainer = ref<HTMLCanvasElement | undefined>();
@@ -22,13 +22,13 @@ const scene = new Scene();
 const camera = new PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 camera.position.z = 5;
 
-// const helper = new GridHelper( 10000, 2, 0xffffff, 0xffffff );
-// scene.add( helper );
+const helper = new GridHelper( 10000, 2, 0xffffff, 0xffffff );
+scene.add( helper );
 
-watch(() => props.objectBlob, async () => {
-    if (!props.objectBlob) return;
+watch(() => props.objectBuffer, async () => {
+    if (!props.objectBuffer) return;
 
-    loader.parse(new Uint8Array(props.objectBlob).buffer, '', (gltf) => {
+    loader.parse(new Uint8Array(props.objectBuffer).buffer, '', (gltf) => {
         scene.add(gltf.scene)
     }, (err) => {
         console.log(err);
