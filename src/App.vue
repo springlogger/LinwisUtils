@@ -17,7 +17,6 @@ const selectedPage = ref<string>('Editor');
 
     <div v-show="selectedPage === 'Editor'">
       <ObjectViewer />
-      <ObjectViewerGUI />
     </div>
     
     <div v-show="selectedPage !== 'Editor'">

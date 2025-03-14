@@ -1,16 +1,20 @@
 <script setup lang="ts">
 
 import { ref, shallowRef, watch } from 'vue';
-import { Scene, PerspectiveCamera, WebGLRenderer, ACESFilmicToneMapping, GridHelper, Vector3, MathUtils, PMREMGenerator } from 'three';
+import { Scene, PerspectiveCamera, WebGLRenderer, ACESFilmicToneMapping, GridHelper, Vector3, MathUtils, PMREMGenerator, Raycaster, Vector2, Object3D, Group } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { watchImmediate } from '@vueuse/core';
+import { useEventListener, watchImmediate } from '@vueuse/core';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import ObjectViewerGUI from './ObjectViewerGUI.vue';
 
 // пока нет модели нужно выводжить подсказку о том чтобы перетащить модель мышкой или выбрать через меню
 
 const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>();
+const objects: Group[] = [];
+const selectedObject = ref<Object3D>()
 
 windowAPI.dialogResponse((_, response) => {
   objectBuffer.value = response;
@@ -19,6 +23,7 @@ windowAPI.dialogResponse((_, response) => {
 const threeContainer = ref<HTMLCanvasElement | undefined>();
 const renderer = shallowRef<WebGLRenderer | undefined>();
 
+let  transformControls: TransformControls | undefined = undefined;
 let controls: OrbitControls | undefined = undefined;
 const loader = new GLTFLoader();
 
@@ -34,6 +39,7 @@ watch(objectBuffer, async () => {
 
     loader.parse(new Uint8Array(objectBuffer.value).buffer, '', (gltf) => {
         scene.add(gltf.scene)
+        objects.push(gltf.scene);
     }, (err) => {
         console.log(err);
     })
@@ -50,14 +56,50 @@ watchImmediate(threeContainer, () => {
     renderer.value.setAnimationLoop( animate );
 
     controls = new OrbitControls( camera, renderer.value.domElement );
+    transformControls = new TransformControls(camera, renderer.value.domElement);
+    scene.add(transformControls.getHelper());
 
     const pmremGenerator = new PMREMGenerator( renderer.value );
     scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
 
     initSkyBox();
-    window.addEventListener( 'resize', onWindowResize );
+    useEventListener(window, 'resize', onWindowResize)
 })
 
+useEventListener(window, 'keydown', (event) => {
+    if (event.key === 'z' || event.key === '1') {
+    	transformControls.setMode('translate');
+    };
+    if (event.key === 'x' || event.key === '2') {
+    	transformControls.setMode('rotate');
+    };
+    if (event.key === 'c' || event.key === '3') {
+    	transformControls.setMode('scale');
+    };
+})
+
+useEventListener(window, 'pointerdown', (event) => {
+    if (objects.length === 0) return;
+
+    const raycaster = new Raycaster();
+    const mouse = new Vector2();
+
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(objects);
+
+    if (intersects.length > 0) {
+        selectedObject.value = intersects[0].object;
+        transformControls.attach(selectedObject.value);
+        controls.enabled = false;
+    } else {
+	    transformControls.detach();
+        controls.enabled = true;
+        selectedObject.value = undefined;
+	};
+})
 
 function initSkyBox() {
     const sky = new Sky();
@@ -96,6 +138,13 @@ function initSkyBox() {
 function animate() {
     if (!renderer.value) return;
 
+    if (transformControls.dragging) {
+        controls.enabled = false;
+    }
+    else if (!controls.enabled) {
+        controls.enabled = true;
+    }
+
     controls?.update();
 
 	renderer.value.render( scene, camera );
@@ -116,4 +165,5 @@ function onWindowResize() {
 
 <template>
     <canvas ref="threeContainer" />
+    <ObjectViewerGUI v-model:selected-object="selectedObject" />
 </template>
