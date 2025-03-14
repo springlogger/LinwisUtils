@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { shallowRef } from 'vue';
+import { ref } from 'vue';
 import ObjectViewer from './components/ObjectViewer.vue';
 import SideBar from './components/SideBar.vue';
+
+const selectedPage = ref<string>('Editor');
 
 </script>
 
 <template>
   <!-- <button @click="openDialog">123</button> -->
 
-  <SideBar />
+  <div class="flex flex-row">
 
-  <ObjectViewer />
+    <SideBar v-model:selectedPage="selectedPage" />
+
+    <ObjectViewer v-show="selectedPage === 'Editor'"/>
+    <div v-show="selectedPage !== 'Editor'">
+      Test
+    </div>
+
+  </div>
 </template>
