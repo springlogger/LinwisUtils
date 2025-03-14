@@ -1,12 +1,21 @@
-<template>
-  <h1 class="text-3xl font-bold underline">💖 Hello World!</h1>
-  <p>Welcome to your Electron applicationfff.</p>
-
-  <ObjectViewer />
-</template>
-
 <script setup lang="ts">
+import { ref } from 'vue';
 import ObjectViewer from './components/ObjectViewer.vue';
 
-console.log('👋 This message is being logged by "App.vue", included via Vite');
+const objectBlob = ref<Buffer<ArrayBufferLike>>();
+
+function openDialog() {
+  windowAPI.openDialog();
+}
+
+windowAPI.dialogResponse((_, response) => {
+  objectBlob.value = response;
+})
+
 </script>
+
+<template>
+  <button @click="openDialog">123</button>
+
+  <ObjectViewer :object-blob="objectBlob" />
+</template>

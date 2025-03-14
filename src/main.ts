@@ -1,6 +1,7 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
+import fs from "fs";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -23,6 +24,19 @@ const createWindow = () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
+
+  ipcMain.on('openDialog', async () => {
+    const pathToObject = await dialog.showOpenDialog({properties: ['openFile']});
+
+    fs.readFile(pathToObject.filePaths[0], (err, data) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+
+      mainWindow.webContents.send("dialogResponse", data);
+    })
+  });
 
   // Open the DevTools.
   mainWindow.webContents.openDevTools();
