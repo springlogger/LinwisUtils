@@ -67,14 +67,21 @@ watchImmediate(threeContainer, () => {
 })
 
 useEventListener(window, 'keydown', (event) => {
-    if (event.key === 'z' || event.key === '1') {
+    if (event.key === 'g' || event.key === '1') {
     	transformControls.setMode('translate');
     };
-    if (event.key === 'x' || event.key === '2') {
+    if (event.key === 'r' || event.key === '2') {
     	transformControls.setMode('rotate');
     };
-    if (event.key === 'c' || event.key === '3') {
+    if (event.key === 's' || event.key === '3') {
     	transformControls.setMode('scale');
+    };
+    
+    if (event.key === 'Backspace') {
+        transformControls.detach();
+    	selectedObject.value.removeFromParent();
+        selectedObject.value = undefined;
+        controls.enabled = true;
     };
 })
 
