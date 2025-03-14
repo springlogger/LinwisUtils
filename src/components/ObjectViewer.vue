@@ -8,9 +8,13 @@ import { watchImmediate } from '@vueuse/core';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-const props = defineProps<{
-    objectBuffer?: Buffer<ArrayBufferLike>
-}>();
+// пока нет модели нужно выводжить подсказку о том чтобы перетащить модель мышкой или выбрать через меню
+
+const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>();
+
+windowAPI.dialogResponse((_, response) => {
+  objectBuffer.value = response;
+})
 
 const threeContainer = ref<HTMLCanvasElement | undefined>();
 const renderer = shallowRef<WebGLRenderer | undefined>();
@@ -25,10 +29,10 @@ camera.position.z = 5;
 const helper = new GridHelper( 10000, 2, 0xffffff, 0xffffff );
 scene.add( helper );
 
-watch(() => props.objectBuffer, async () => {
-    if (!props.objectBuffer) return;
+watch(objectBuffer, async () => {
+    if (!objectBuffer.value) return;
 
-    loader.parse(new Uint8Array(props.objectBuffer).buffer, '', (gltf) => {
+    loader.parse(new Uint8Array(objectBuffer.value).buffer, '', (gltf) => {
         scene.add(gltf.scene)
     }, (err) => {
         console.log(err);
