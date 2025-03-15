@@ -2,15 +2,13 @@
 import { ref } from 'vue';
 import ObjectViewer from './components/ObjectViewer.vue';
 import SideBar from './components/SideBar.vue';
-import ObjectViewerGUI from './components/ObjectViewerGUI.vue';
+import ToDoList from './components/ToDoList.vue'
 
 const selectedPage = ref<string>('Editor');
 
 </script>
 
 <template>
-  <!-- <button @click="openDialog">123</button> -->
-
   <div class="flex flex-row">
 
     <SideBar v-model:selectedPage="selectedPage" />
@@ -19,8 +17,8 @@ const selectedPage = ref<string>('Editor');
       <ObjectViewer />
     </div>
     
-    <div v-show="selectedPage !== 'Editor'">
-      Test
+    <div v-show="selectedPage !== 'Editor'" class="w-full">
+      <ToDoList />
     </div>
 
   </div>

@@ -1,7 +1,8 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, net } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from "fs";
+import { api } from "./constants"
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -26,6 +27,25 @@ const createWindow = () => {
   }
 
   mainWindow.removeMenu();
+  mainWindow.maximize();
+
+  const request = net.request(api.backend_url)
+
+  request.on("error", (err) => {
+    console.log(err);
+  })
+
+  request.on("response", (response) => {
+    console.log(`STATUS: ${response.statusCode}`)
+    console.log(`HEADERS: ${JSON.stringify(response.headers)}`)
+    response.on('data', (chunk) => {
+      console.log(`BODY: ${chunk}`)
+    })
+    response.on('end', () => {
+      console.log('No more data in response.')
+    })
+  })
+  request.end();
 
   ipcMain.on('openDialog', async () => {
     const pathToObject = await dialog.showOpenDialog({properties: ['openFile']});
@@ -42,8 +62,23 @@ const createWindow = () => {
     })
   });
 
+  ipcMain.on('openSaveDialog', async (_, savedScene: JSON) => {
+    const { filePath } = await dialog.showSaveDialog({
+      properties: ['createDirectory'], 
+      filters: [{ name: 'json', extensions: ['json'] }]
+    });
+  
+    if (!filePath) return;
+  
+    try {
+      await fs.promises.writeFile(filePath, JSON.stringify(savedScene, null, 2));
+    } catch (err) {
+      console.error('Ошибка при сохранении файла:', err);
+    }
+  });
+
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished
