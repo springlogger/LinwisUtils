@@ -29,6 +29,12 @@ function mouseLeave() {
     isMouseOverSideBar.value = false;
 }
 
+function testUser() {
+    user.isUserAuthorized = true;
+
+    user.fetch("123", "321");
+}
+
 </script>
 
 <template>
@@ -44,7 +50,7 @@ function mouseLeave() {
 
             <div>
                 <!-- <h1 class="flex justify-center text-2xl jetbrains-mono-code-bold bg-gradient-to-r from-[#f29871] to-[#ff4d4d] bg-clip-text text-transparent">Linwis Utils</h1> -->
-                <div @click="user.isUserAuthorized = true" class="mt-5 cursor-pointer bg-gray-50 rounded-2xl p-2 text-black text-center hover:bg-gray-200">
+                <div @click="testUser" class="mt-5 cursor-pointer bg-gray-50 rounded-2xl p-2 text-black text-center hover:bg-gray-200">
                     <i class="fa-solid fa-user"></i> {{ isMouseOverSideBar === true ? "Profile" : '' }}
                 </div>
             </div>

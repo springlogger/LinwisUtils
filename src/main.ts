@@ -1,15 +1,34 @@
-import { app, BrowserWindow, dialog, ipcMain, net } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from "fs";
-import { api } from "./constants"
+import { api } from './api';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
 }
 
+const createSplashWindow = () => {
+  const splashScreen = new BrowserWindow({
+    width: 200, 
+    height: 400, 
+    frame: false, // Без рамки
+    alwaysOnTop: true, // Поверх других окон
+    transparent: false, // Прозрачность
+    resizable: false,
+    show: false,
+  });
+
+
+  splashScreen.loadFile('splash.html');
+  splashScreen.once('ready-to-show', () => splashScreen.show());
+
+  return splashScreen;
+}
+
 const createWindow = () => {
+
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -17,7 +36,12 @@ const createWindow = () => {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
+    show: false
   });
+
+  mainWindow.removeMenu();
+  mainWindow.maximize();
+
 
   // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -25,27 +49,8 @@ const createWindow = () => {
   } else {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
-
-  mainWindow.removeMenu();
-  mainWindow.maximize();
-
-  const request = net.request(api.backend_url)
-
-  request.on("error", (err) => {
-    console.log(err);
-  })
-
-  request.on("response", (response) => {
-    console.log(`STATUS: ${response.statusCode}`)
-    console.log(`HEADERS: ${JSON.stringify(response.headers)}`)
-    response.on('data', (chunk) => {
-      console.log(`BODY: ${chunk}`)
-    })
-    response.on('end', () => {
-      console.log('No more data in response.')
-    })
-  })
-  request.end();
+  
+  api.init(mainWindow);
 
   ipcMain.on('openDialog', async () => {
     const pathToObject = await dialog.showOpenDialog({properties: ['openFile']});
@@ -78,13 +83,20 @@ const createWindow = () => {
   });
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  const splashScreen = createSplashWindow();
+
+  setTimeout(() => {
+    splashScreen.close();
+    createWindow();
+  }, 3000);
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -96,12 +108,9 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
-
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.

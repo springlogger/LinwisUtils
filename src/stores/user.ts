@@ -5,8 +5,17 @@ export const useUserStore = defineStore("user", () => {
   
     const isUserAuthorized = ref(false);
 
+    async function fetch(email: string, password: string) {
+        windowAPI.sendUserData({email, password});
+        
+        windowAPI.fetchUserFromWindow((_, response) => {
+            console.log(JSON.parse(response));
+        })
+    }
+
     return {
-        isUserAuthorized
+        isUserAuthorized,
+        fetch
     };
 });
 
