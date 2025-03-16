@@ -14,9 +14,9 @@ const createSplashWindow = () => {
   const splashScreen = new BrowserWindow({
     width: 300, 
     height: 500, 
-    frame: false, // Без рамки
-    alwaysOnTop: true, // Поверх других окон
-    transparent: false, // Прозрачность
+    frame: false,
+    alwaysOnTop: true,
+    transparent: false,
     resizable: false,
     show: false,
   });
@@ -33,6 +33,7 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    alwaysOnTop: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -43,7 +44,7 @@ const createWindow = () => {
   mainWindow.maximize();
 
 
-  // and load the index.html of the app.
+  // load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -87,9 +88,6 @@ const createWindow = () => {
   mainWindow.webContents.openDevTools();
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.on('ready', () => {
   const splashScreen = createSplashWindow();
 
@@ -99,9 +97,6 @@ app.on('ready', () => {
   }, 3000);
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
@@ -113,5 +108,3 @@ app.on('activate', () => {
     createWindow();
   }
 });
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

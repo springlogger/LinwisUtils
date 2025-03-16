@@ -21,6 +21,7 @@ function submitUser() {
     }
     else {
         console.log(name, email, password)
+        console.log("test");
     }
 
     email.value = "";
