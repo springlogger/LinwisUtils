@@ -5,14 +5,20 @@ export const useUserStore = defineStore("user", () => {
   
     const isUserAuthorized = ref(false);
 
-    async function fetch(email: string, password: string) {
+    async function login(email: string, password: string) {
         const response = await windowAPI.api.fetchUser({ email, password });
-        console.log(JSON.parse(response));
+        return response
+    }
+
+    async function register(name: string, email: string, password: string) {
+        const response = await windowAPI.api.register({ name, email, password });
+        return response
     }
 
     return {
         isUserAuthorized,
-        fetch
+        login,
+        register
     };
 });
 
