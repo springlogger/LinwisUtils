@@ -14,21 +14,29 @@ const password = ref<string>();
 
 const authorizationType = ref<'login' | 'register'>('login');
 
-function submitUser() {
+async function submitUser() {
+
+    let response;
     
     if (authorizationType.value === 'login') {
-        user.fetch(email.value, password.value)
+        response = await user.login(email.value, password.value)
     }
     else {
-        console.log(name, email, password)
-        console.log("test");
+        response = await user.register(name.value, email.value, password.value)
     }
+
+    console.log(response);
 
     email.value = "";
     password.value = "";
     name.value = "";
 
-    emits('redirect');
+    if (response) {
+        emits('redirect');
+    }
+    else {
+        console.error("err")
+    }
 }
 
 </script>
@@ -52,7 +60,7 @@ function submitUser() {
             </div>
         </form>
 
-        <form v-else class="w-1/3 h-1/3  p-3 flex justify-center items-center">
+        <form v-else @submit.prevent="submitUser" class="w-1/3 h-1/3  p-3 flex justify-center items-center">
             <div class="w-fit flex flex-col gap-y-10">
                 <div>
                     <p>Name</p>

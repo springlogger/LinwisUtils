@@ -18,12 +18,33 @@ export class MyAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`Ошибка запроса: ${response.status} ${response.statusText}`);
+        throw new Error(`Fetch error: ${response.status} ${response.statusText}`);
       }
 
       return await response.text();
     } catch (error) {
-      console.error("Ошибка запроса:", error);
+      console.error("Fetch error:", error);
+      throw error;
+    }
+  }
+
+  @IPCMethod()
+  public static async register(body: { name: string, email: string; password: string }): Promise<string> {
+
+    try {
+      const response = await net.fetch(api_constants.backend_url + "user/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Fetch error: ${response.status} ${response.statusText}`);
+      }
+
+      return await response.text();
+    } catch (error) {
+      console.error("Fetch error:", error);
       throw error;
     }
   }
@@ -33,4 +54,7 @@ export class MyAPI {
 export const ipcCalls = {
   fetchUser: (body: { email: string; password: string }) => 
     ipcRenderer.invoke("fetchUser", body),
+
+  register: (body: { name: string, email: string; password: string }) => 
+    ipcRenderer.invoke("register", body),
 }
