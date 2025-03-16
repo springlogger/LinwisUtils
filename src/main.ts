@@ -11,8 +11,8 @@ if (started) {
 
 const createSplashWindow = () => {
   const splashScreen = new BrowserWindow({
-    width: 200, 
-    height: 400, 
+    width: 300, 
+    height: 500, 
     frame: false, // Без рамки
     alwaysOnTop: true, // Поверх других окон
     transparent: false, // Прозрачность
@@ -83,7 +83,7 @@ const createWindow = () => {
   });
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished

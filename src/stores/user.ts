@@ -6,11 +6,13 @@ export const useUserStore = defineStore("user", () => {
     const isUserAuthorized = ref(false);
 
     async function fetch(email: string, password: string) {
-        windowAPI.sendUserData({email, password});
+
+        console.log(email, password)
+        // windowAPI.sendUserData({email, password});
         
-        windowAPI.fetchUserFromWindow((_, response) => {
-            console.log(JSON.parse(response));
-        })
+        // windowAPI.fetchUserFromWindow((_, response) => {
+        //     console.log(JSON.parse(response));
+        // })
     }
 
     return {

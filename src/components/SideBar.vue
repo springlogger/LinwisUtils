@@ -30,9 +30,11 @@ function mouseLeave() {
 }
 
 function testUser() {
-    user.isUserAuthorized = true;
+    // user.isUserAuthorized = true;
 
-    user.fetch("123", "321");
+    selectedPage.value = 'Authorization';
+
+    // user.fetch("123", "321");
 }
 
 </script>
@@ -57,7 +59,7 @@ function testUser() {
 
             <nav class="h-32 flex flex-col items-center justify-between">
                 <div 
-                    v-for="page in ['Editor', 'Notes', 'Settings']"
+                    v-for="page in ['Editor', 'ToDoList', 'Settings']"
                     @click="selectedPage = page" 
                     class="flex items-center px-2 w-full p-1 text-center rounded-2xl cursor-pointer hover:bg-white hover:text-black"
                     :class="{
@@ -69,7 +71,7 @@ function testUser() {
                     <i class="fa-solid" 
                         :class="{
                             'fa-cube': page === 'Editor',
-                            'fa-comment': page === 'Notes',
+                            'fa-comment': page === 'ToDoList',
                             'fa-gear': page === 'Settings',
                             'mr-2': isMouseOverSideBar === true
                         }"
