@@ -32,9 +32,9 @@ function mouseLeave() {
 function testUser() {
     // user.isUserAuthorized = true;
 
-    selectedPage.value = 'Authorization';
+    // selectedPage.value = 'Authorization';
 
-    // user.fetch("123", "321");
+    user.fetch("123", "321");
 }
 
 </script>

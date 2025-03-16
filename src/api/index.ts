@@ -1,45 +1,36 @@
-import { BrowserWindow, ipcMain, ipcRenderer, net } from "electron";
+import { BrowserWindow, ipcRenderer, net } from "electron";
 import { api_constants } from "../constants";
+import { IPCMethod } from "./helper";
 
-let browserWindow: BrowserWindow;
+export class MyAPI {
+  static browserWindow: BrowserWindow;
 
-function init(window: BrowserWindow) {
-    browserWindow = window;
+  static init(mainWindow: BrowserWindow) {
+    MyAPI.browserWindow = mainWindow;
+  }
 
-    ipcMain.on("fetchUser", (_, body) => {
-      fetchUser(body);
-    })
-}
+  @IPCMethod()
+  public static async fetchUser(body: { email: string; password: string }): Promise<string> {
+    try {
+      const response = await net.fetch(api_constants.backend_url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
 
- function fetchUser(body: {email: string, password: string}) {
-  if (!browserWindow) return;
+      if (!response.ok) {
+        throw new Error(`Ошибка запроса: ${response.status} ${response.statusText}`);
+      }
 
-  const request = net.request(api_constants.backend_url)
-
-  request.on("error", (err) => {
-    console.log(err);
-  })
-
-  request.on("response", (response) => {
-    response.on('data', (chunk) => {
-      browserWindow.webContents.send("sendUserToClient", chunk.toString());
-    })
-  })
-  request.end();
-}
-
-// There are the methods our Vue app uses
-const ipcCalls = {
-  sendUserData(body: {email: string, password: string}) {
-      ipcRenderer.send('fetchUser', body);
-  },
-  fetchUserFromWindow(listener: (event: Electron.IpcRendererEvent, response: string) => void) {
-      ipcRenderer.on('sendUserToClient', listener);
+      return await response.text();
+    } catch (error) {
+      console.error("Ошибка запроса:", error);
+      throw error;
+    }
   }
 }
 
-export const api = {
-    init,
-    fetchUser,
-    ipcCalls
+// There are the methods our Vue app uses
+export const ipcCalls = {
+  fetchUser: (body: { email: string; password: string }) => 
+    ipcRenderer.invoke("fetchUser", body),
 }

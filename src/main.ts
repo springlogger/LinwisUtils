@@ -2,7 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import fs from "fs";
-import { api } from './api';
+import { MyAPI } from './api';
+import { registerIpcHandlers } from './api/helper';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -29,7 +30,6 @@ const createSplashWindow = () => {
 
 const createWindow = () => {
 
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -50,7 +50,8 @@ const createWindow = () => {
     mainWindow.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`));
   }
   
-  api.init(mainWindow);
+  MyAPI.init(mainWindow);
+  registerIpcHandlers();
 
   ipcMain.on('openDialog', async () => {
     const pathToObject = await dialog.showOpenDialog({properties: ['openFile']});
