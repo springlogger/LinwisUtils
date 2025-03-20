@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./assets/fonts.css";
 
+@import "./assets/notes.css"
 
 /* body {
   overflow: hidden;

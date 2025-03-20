@@ -1,0 +1,11 @@
+.prosemirror-editor {
+    padding: 1em;
+    min-height: 48em;
+    border-radius: 1%;
+}
+
+.ProseMirror-focused {
+    outline: 2px solid white !important; /* Белый outline */
+    border-color: transparent; /* Убираем стандартную рамку */
+    box-shadow: none; /* Убираем возможные тени */
+}
