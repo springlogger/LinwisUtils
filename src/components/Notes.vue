@@ -1,56 +1,14 @@
 <script setup lang="ts">
 import { useEventListener } from '@vueuse/core';
-import { nextTick, ref } from 'vue';
-import MarkdownIt from 'markdown-it';
-import DOMPurify from 'dompurify';
-import TurndownService from 'turndown'
+import { ref } from 'vue';
+import { useEditorStore } from '../stores/editor';
+import { storeToRefs } from 'pinia';
 
 const leftSidebar = ref<HTMLDivElement>();
 const leftSidebarWidth = ref<number>(undefined);
-const contentContainer = ref<HTMLDivElement>();
 
-const md = new MarkdownIt()
-
-const content = ref('**Начни писать...**')
-const contentRaw = ref('**Начни писать...**');
-
-const handleInput = (event: Event) => {
-    if (!contentContainer.value) return;
-
-    // const element = event.target as HTMLElement
-    // content.value = element.innerText
-
-    // if ((event as any).data) {
-    //     contentRaw.value = contentRaw.value + (event as any).data;
-    // }
-    // else {
-    //     contentRaw.value = contentContainer.value.innerHTML;
-    // }
-
-    console.log(contentContainer.value.dataset.raw);
-
-    contentRaw.value = contentContainer.value.dataset.raw;
-    // console.log(contentContainer.value.innerText, contentContainer.value.innerHTML)
-
-    // content.value = DOMPurify.sanitize(md.render(contentRaw.value));
-
-    nextTick(() => {
-        setCursorToEnd(contentContainer.value)
-    })
-}
-
-const setCursorToEnd = (element: HTMLElement) => {
-  const range = document.createRange();
-  const selection = window.getSelection();
-
-  if (!selection) return;
-
-  range.setStart(element, element.childNodes.length);
-  range.collapse(true);
-  
-  selection.removeAllRanges();
-  selection.addRange(range);
-};
+const editor = useEditorStore();
+const { editorContainer } = storeToRefs(editor);
 
 async function startResizing (event: MouseEvent) {
 
@@ -114,14 +72,7 @@ async function startResizing (event: MouseEvent) {
             </div>
         </div>
         <div class="w-full h-screen bg-[#141414] ">
-            <div 
-                ref="contentContainer"
-                contenteditable="true" 
-                @input="handleInput"
-                :data-raw="contentRaw"
-                v-html="md.render(contentRaw)"
-                class="p-4 border rounded bg-gray-800 text-white min-h-[100px] focus:outline-none"
-            ></div>
+            <div ref="editorContainer" class="w-full h-screen whitespace-pre-wrap p-2 focus:outline-none"></div>
         </div>
         <div class="w-1/5 h-screen bg-[#1f1f1f]">
             <div>
