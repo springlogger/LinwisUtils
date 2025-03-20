@@ -53,9 +53,9 @@ function testUser() {
                 </div>
             </div>
 
-            <nav class="h-32 flex flex-col items-center justify-between">
+            <nav class="h-32 flex flex-col items-center justify-between gap-y-4">
                 <div 
-                    v-for="page in ['Editor', 'ToDoList', 'Settings']"
+                    v-for="page in ['Editor', 'ToDoList', 'Notes', 'Settings']"
                     @click="selectedPage = page" 
                     class="flex items-center px-2 w-full p-1 text-center rounded-2xl cursor-pointer hover:bg-white hover:text-black"
                     :class="{
@@ -67,6 +67,7 @@ function testUser() {
                     <i class="fa-solid" 
                         :class="{
                             'fa-cube': page === 'Editor',
+                            'fa-note-sticky': page === 'Notes',
                             'fa-comment': page === 'ToDoList',
                             'fa-gear': page === 'Settings',
                             'mr-2': isMouseOverSideBar === true

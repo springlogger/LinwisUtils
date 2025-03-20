@@ -6,7 +6,7 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { Sky } from "three/examples/jsm/objects/Sky";
-import { ref, shallowRef, watch } from "vue";
+import { ref, shallowRef, watch, watchEffect } from "vue";
 
 export const useThreeStore = defineStore("three", () => {
     
@@ -59,10 +59,9 @@ export const useThreeStore = defineStore("three", () => {
 
         const pmremGenerator = new PMREMGenerator( renderer.value );
         scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
-
-        initSkyBox();
-        useEventListener(window, 'resize', onWindowResize)
     })
+
+    useEventListener(window, 'resize', onWindowResize)
 
     useEventListener(window, 'keydown', (event) => {
         if (event.key === 'g') {
@@ -113,7 +112,10 @@ export const useThreeStore = defineStore("three", () => {
         }
     })
 
-    function initSkyBox() {
+    //init SkyBox
+    watchEffect(() => {
+        if (!renderer.value) return;
+
         const sky = new Sky();
         const sun = new Vector3();
 
@@ -145,7 +147,7 @@ export const useThreeStore = defineStore("three", () => {
 
         renderer.value.toneMappingExposure = effectController.exposure;
         scene.add( sky );
-    }
+    })
 
     function animate() {
         if (!renderer.value) return;
@@ -163,6 +165,7 @@ export const useThreeStore = defineStore("three", () => {
     }
 
     function onWindowResize() {
+        if (!renderer.value) return;
 
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
@@ -170,7 +173,6 @@ export const useThreeStore = defineStore("three", () => {
         renderer.value.setSize( window.innerWidth, window.innerHeight );
 
         animate();
-
     }
 
     function convertToJson() {
