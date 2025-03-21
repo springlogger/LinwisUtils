@@ -30,6 +30,7 @@ const createSplashWindow = () => {
 const createWindow = () => {
 
   const mainWindow = new BrowserWindow({
+    title: "LinwisUtils",
     width: 1200,
     height: 800,
     webPreferences: {

@@ -15,13 +15,13 @@ export const useNotesStore = defineStore("notes", () => {
   
     const notesList = ref<Note[]>([]);
     notesList.value.push({
-        name: "test",
-        type: "test",
-        status: "test",
+        name: "test124214",
+        type: "test4214",
+        status: "test124",
         score: 0,
-        author: "test",
+        author: "test4242",
         completedTime: new Date(),
-        link: "test"
+        link: "tes12t"
     })
 
     notesList.value.push({

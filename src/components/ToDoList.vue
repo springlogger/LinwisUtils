@@ -1,12 +1,28 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useNotesStore } from '../stores/notes';
+import { useEventListener } from '@vueuse/core';
 
 
 const notes = useNotesStore();
 
-function addNewNote() {
+const isAddingNewNote = ref(false);
 
+const newNoteName = ref('');
+const newNoteType = ref('');
+const newNoteStatus = ref('');
+const newNoteScore = ref('');
+const newNoteAuthor = ref('');
+const newNoteCompletedTime = ref('');
+const newNoteLink = ref('');
+
+function addNewNote() {
+    if (!newNoteName.value && !newNoteLink.value) return;
+
+    
 }
+
+useEventListener(window, 'click', addNewNote);
 
 </script>
 
@@ -104,8 +120,18 @@ function addNewNote() {
                             {{ note.link }}
                         </div>
                     </template>
+
+                    <template v-if="isAddingNewNote">
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteName" placeholder="Name" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteType" placeholder="Type" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteStatus" placeholder="Status" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteScore" placeholder="Score" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteAuthor" placeholder="Author" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteCompletedTime" placeholder="Time" /></div>
+                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteLink" placeholder="Link" /></div>
+                    </template>
                 </div>
-                <div @click="addNewNote" class="mt-10 hover:bg-white hover:text-black w-fit rounded-2xl px-2 py-1 transition-all ease-linear duration-100 cursor-pointer">
+                <div @click="isAddingNewNote = true" class="mt-10 hover:bg-white hover:text-black w-fit rounded-2xl px-2 py-1 transition-all ease-linear duration-100 cursor-pointer">
                     + New
                 </div>
             </div>
