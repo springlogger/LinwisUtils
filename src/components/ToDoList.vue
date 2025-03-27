@@ -1,28 +1,49 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useNotesStore } from '../stores/notes';
-import { useEventListener } from '@vueuse/core';
+import { useTodoListStore } from '../stores/todolist';
+import { TodoItem } from '../types';
 
 
-const notes = useNotesStore();
+const todoList = useTodoListStore();
 
-const isAddingNewNote = ref(false);
+const isAddingNewTodoItem = ref(false);
+const newTodoItem = ref({
+    name: "",
+    type: "",
+    status: "",
+    score: "",
+    author: "",
+    completedTime: "",
+    link: ""
+});
 
-const newNoteName = ref('');
-const newNoteType = ref('');
-const newNoteStatus = ref('');
-const newNoteScore = ref('');
-const newNoteAuthor = ref('');
-const newNoteCompletedTime = ref('');
-const newNoteLink = ref('');
+async function update() {
+    if (!newTodoItem.value || !newTodoItem.value.name || !newTodoItem.value.link) return;
 
-function addNewNote() {
-    if (!newNoteName.value && !newNoteLink.value) return;
+    // берём имя из user.ts
+    const data: TodoItem = {
+        name: newTodoItem.value.name,
+        link: newTodoItem.value.link,
+        author: newTodoItem.value.author,
+        type: newTodoItem.value.type
+    }
 
-    
+    try {
+        data.score = newTodoItem.value.score !== "" ? Number(newTodoItem.value.score) : undefined;
+        data.completedTime = newTodoItem.value.completedTime !== "" ? new Date(newTodoItem.value.completedTime) : undefined;
+    } catch (e) {
+        console.log(e);
+    }
+
+    const todoItem = todoList.fetch(newTodoItem.value.name);
+
+    if (todoItem) {
+        await todoList.update(data);
+        return;
+    }
+
+    await todoList.create(data);
 }
-
-useEventListener(window, 'click', addNewNote);
 
 </script>
 
@@ -75,7 +96,7 @@ useEventListener(window, 'click', addNewNote);
             </div>
 
             <div>
-                <div v-if="notes.notesList.length !== 0" class="mt-10 grid grid-cols-7 gap-y-5">
+                <div v-if="todoList.todoList.length !== 0" class="mt-10 grid grid-cols-7 gap-y-5">
                     <div class="flex justify-center items-center opacity-50">
                         Name
                     </div>
@@ -97,7 +118,7 @@ useEventListener(window, 'click', addNewNote);
                     <div class="flex justify-center items-center opacity-50">
                         Link
                     </div>
-                    <template v-for="note in notes.notesList">
+                    <template v-for="note in todoList.todoList">
                         <div class="flex justify-center items-center">
                             {{ note.name }}
                         </div>
@@ -121,17 +142,17 @@ useEventListener(window, 'click', addNewNote);
                         </div>
                     </template>
 
-                    <template v-if="isAddingNewNote">
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteName" placeholder="Name" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteType" placeholder="Type" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteStatus" placeholder="Status" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteScore" placeholder="Score" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteAuthor" placeholder="Author" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteCompletedTime" placeholder="Time" /></div>
-                        <div class="flex justify-center items-center"><input class="w-3/4 text-center" v-model="newNoteLink" placeholder="Link" /></div>
+                    <template v-if="isAddingNewTodoItem">
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.name" placeholder="Name" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.type" placeholder="Type" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.status" placeholder="Status" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.score" placeholder="Score" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.author" placeholder="Author" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.completedTime" placeholder="Time" /></div>
+                        <div class="flex justify-center items-center"><input @focusout="update" class="w-3/4 text-center" v-model="newTodoItem.link" placeholder="Link" /></div>
                     </template>
                 </div>
-                <div @click="isAddingNewNote = true" class="mt-10 hover:bg-white hover:text-black w-fit rounded-2xl px-2 py-1 transition-all ease-linear duration-100 cursor-pointer">
+                <div @click="isAddingNewTodoItem = true" class="mt-10 hover:bg-white hover:text-black w-fit rounded-2xl px-2 py-1 transition-all ease-linear duration-100 cursor-pointer">
                     + New
                 </div>
             </div>
