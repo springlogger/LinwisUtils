@@ -91,4 +91,22 @@ async function startResizing (event: MouseEvent) {
 </template>
 
 <style scoped>
+/* Для блочного кода */
+.prosemirror-editor > p > pre {
+  font-family: "Fira Code", monospace;
+  background-color: #1e1e1e;
+  color: #dcdcdc;
+  padding: 8px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+/* Для инлайн-кода */
+.prosemirror-editor > p > code {
+  font-family: "Fira Code", monospace;
+  background-color: #2d2d2d;
+  color: #f8f8f8;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
 </style>

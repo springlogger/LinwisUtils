@@ -56,6 +56,7 @@ export const useEditorStore = defineStore("editor", () => {
 
         view = new EditorView(editorContainerNew, { state });
         view.dom.classList.add("prosemirror-editor");
+        // view.dom.classList.add("prosemirror-editor", "jetbrains-mono-code-bold");
 
     }, {immediate: true});
 
