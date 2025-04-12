@@ -52,11 +52,9 @@ export const useThreeStore = defineStore('three', () => {
                 gltf => {
                     scene.add(gltf.scene)
 
-                    gltf.scene.traverse(object => {
-                        if (object.type === 'Mesh') {
-                            objects.value.push(object)
-                        }
-                    })
+                    for (const object of gltf.scene.children) {
+                        objects.value.push(object)
+                    }
                 },
                 err => {
                     console.log(err)
@@ -157,6 +155,15 @@ export const useThreeStore = defineStore('three', () => {
     const { selectedObject } = (function useThreeControls() {
         const selectedObject = ref<Object3D>()
 
+        function findRootParentInList(object: Object3D, list: Object3D[]): Object3D | null {
+            let current: Object3D | null = object
+            while (current) {
+                if (list.includes(current)) return current
+                current = current.parent
+            }
+            return null
+        }
+
         watch(selectedObject, selectedObjectNew => {
             if (selectedObjectNew) {
                 transformControls.attach(selectedObjectNew)
@@ -202,12 +209,16 @@ export const useThreeStore = defineStore('three', () => {
 
             if (intersects.length === 0) return
 
-            if (selectedObject.value && intersects[0].object.uuid === selectedObject.value.uuid) {
-                if (transformControls.dragging) return
+            const hitObject = intersects[0].object
+            const rootObject = findRootParentInList(hitObject, objects.value)
 
+            if (!rootObject) return
+
+            if (selectedObject.value && rootObject.uuid === selectedObject.value.uuid) {
+                if (transformControls.dragging) return
                 selectedObject.value = undefined
             } else {
-                selectedObject.value = intersects[0].object
+                selectedObject.value = rootObject
             }
         })
 
