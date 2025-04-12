@@ -1,8 +1,6 @@
-@import "tailwindcss";
-@import "./assets/fonts.css";
+@import 'tailwindcss';
+@import './assets/fonts.css';
 
-@import "./assets/notes.css"
-
-/* body {
+@import './assets/notes.css'; /* body {
   overflow: hidden;
 } */

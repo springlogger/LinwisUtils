@@ -1,192 +1,234 @@
-import { watchImmediate, useEventListener } from "@vueuse/core";
-import { defineStore } from "pinia";
-import { ACESFilmicToneMapping, GridHelper, Group, MathUtils, Object3D, PerspectiveCamera, PMREMGenerator, Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { TransformControls } from "three/examples/jsm/controls/TransformControls";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { Sky } from "three/examples/jsm/objects/Sky";
-import { ref, shallowRef, watch, watchEffect } from "vue";
+import { watchImmediate, useEventListener } from '@vueuse/core'
+import { defineStore } from 'pinia'
+import {
+    ACESFilmicToneMapping,
+    GridHelper,
+    MathUtils,
+    Object3D,
+    PerspectiveCamera,
+    PMREMGenerator,
+    Raycaster,
+    Scene,
+    Vector2,
+    Vector3,
+    WebGLRenderer,
+} from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
+import { Sky } from 'three/examples/jsm/objects/Sky'
+import { ref, shallowRef, watch, watchEffect } from 'vue'
 
-export const useThreeStore = defineStore("three", () => {
-    
-    const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>();
-    const objects: Group[] = [];
-    const selectedObject = ref<Object3D>()
+export const useThreeStore = defineStore('three', () => {
+    const threeContainer = ref<HTMLCanvasElement | undefined>()
 
-    const threeContainer = ref<HTMLCanvasElement | undefined>();
-    const renderer = shallowRef<WebGLRenderer | undefined>();
+    const scene = new Scene()
+    const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+    camera.position.z = 5
 
-    let  transformControls: TransformControls | undefined = undefined;
-    let controls: OrbitControls | undefined = undefined;
-    const loader = new GLTFLoader();
+    const helper = new GridHelper(10000, 2, 0xffffff, 0xffffff)
+    scene.add(helper)
 
-    const scene = new Scene();
-    const camera = new PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
-    camera.position.z = 5;
+    let transformControls: TransformControls | undefined = undefined
+    let controls: OrbitControls | undefined = undefined
 
-    const helper = new GridHelper( 10000, 2, 0xffffff, 0xffffff );
-    scene.add( helper );
+    const { objects } = (function useObjectLoader() {
+        const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>()
+        const objects = shallowRef<Object3D[]>([])
 
-    windowAPI.dialogResponse((_, response) => {
-        objectBuffer.value = response;
-    })
+        const loader = new GLTFLoader()
 
-    watch(objectBuffer, async () => {
-        if (!objectBuffer.value) return;
-
-        loader.parse(new Uint8Array(objectBuffer.value).buffer, '', (gltf) => {
-            scene.add(gltf.scene)
-            objects.push(gltf.scene);
-        }, (err) => {
-            console.log(err);
+        windowAPI.dialogResponse((_, response) => {
+            objectBuffer.value = response
         })
-    })
 
-    watchImmediate(threeContainer, () => {
-        if (!threeContainer.value) return;
+        watch(objectBuffer, async () => {
+            if (!objectBuffer.value) return
 
-        renderer.value = new WebGLRenderer({canvas: threeContainer.value});
-        renderer.value.setSize( window.innerWidth, window.innerHeight );
-        renderer.value.toneMapping = ACESFilmicToneMapping;
-        renderer.value.toneMappingExposure = 0.5;
+            loader.parse(
+                new Uint8Array(objectBuffer.value).buffer,
+                '',
+                gltf => {
+                    scene.add(gltf.scene)
 
-        renderer.value.setAnimationLoop( animate );
+                    gltf.scene.traverse(object => {
+                        if (object.type === 'Mesh') {
+                            objects.value.push(object)
+                        }
+                    })
+                },
+                err => {
+                    console.log(err)
+                }
+            )
+        })
 
-        controls = new OrbitControls( camera, renderer.value.domElement );
-        transformControls = new TransformControls(camera, renderer.value.domElement);
-        scene.add(transformControls.getHelper());
-
-        const pmremGenerator = new PMREMGenerator( renderer.value );
-        scene.environment = pmremGenerator.fromScene( new RoomEnvironment(), 0.04 ).texture;
-    })
-
-    useEventListener(window, 'resize', onWindowResize)
-
-    useEventListener(window, 'keydown', (event) => {
-        if (event.key === 'g') {
-            transformControls.setMode('translate');
+        return {
+            objects,
         }
-        if (event.key === 'r') {
-            transformControls.setMode('rotate');
-        }
-        if (event.key === 's') {
-            transformControls.setMode('scale');
-        }
-        
-        if (event.key === 'Delete') {
-            transformControls.detach();
-            selectedObject.value.removeFromParent();
-            selectedObject.value = undefined;
-        }
+    })()
 
-        if (event.key === 'Escape') {
-            transformControls.detach();
-            selectedObject.value = undefined;
-        }
-    })
+    ;(function useInitRender() {
+        const renderer = shallowRef<WebGLRenderer | undefined>()
 
-    useEventListener(window, 'pointerdown', (event) => {
-        if (objects.length === 0) return;
+        watchImmediate(threeContainer, () => {
+            if (!threeContainer.value) return
 
-        const raycaster = new Raycaster();
-        const mouse = new Vector2();
+            renderer.value = new WebGLRenderer({ canvas: threeContainer.value })
+            renderer.value.setSize(window.innerWidth, window.innerHeight)
+            renderer.value.toneMapping = ACESFilmicToneMapping
+            renderer.value.toneMappingExposure = 0.5
 
-        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            renderer.value.setAnimationLoop(animate)
 
-        raycaster.setFromCamera(mouse, camera);
-        const intersects = raycaster.intersectObjects(objects);
+            controls = new OrbitControls(camera, renderer.value.domElement)
+            transformControls = new TransformControls(camera, renderer.value.domElement)
+            scene.add(transformControls.getHelper())
 
-        if (intersects.length === 0) return;
+            const pmremGenerator = new PMREMGenerator(renderer.value)
+            scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture
+        })
 
-        if (selectedObject.value && intersects[0].object.uuid === selectedObject.value.uuid) {
-            if (transformControls.dragging) return;
+        watchEffect(() => {
+            if (!renderer.value) return
 
-            transformControls.detach();
-            selectedObject.value = undefined;
-        }
-        else {
-            selectedObject.value = intersects[0].object;
-            transformControls.attach(selectedObject.value);
-        }
-    })
+            const sky = new Sky()
+            const sun = new Vector3()
 
-    //init SkyBox
-    watchEffect(() => {
-        if (!renderer.value) return;
+            sky.scale.setScalar(450000)
 
-        const sky = new Sky();
-        const sun = new Vector3();
+            const effectController = {
+                turbidity: 10,
+                rayleigh: 3,
+                mieCoefficient: 0.005,
+                mieDirectionalG: 0.7,
+                elevation: 2,
+                azimuth: 180,
+                exposure: renderer.value.toneMappingExposure,
+            }
 
-        sky.scale.setScalar( 450000 );
+            const uniforms = sky.material.uniforms
 
-        const effectController = {
-            turbidity: 10,
-            rayleigh: 3,
-            mieCoefficient: 0.005,
-            mieDirectionalG: 0.7,
-            elevation: 2,
-            azimuth: 180,
-            exposure: renderer.value.toneMappingExposure
-        };
+            uniforms['turbidity'].value = effectController.turbidity
+            uniforms['rayleigh'].value = effectController.rayleigh
+            uniforms['mieCoefficient'].value = effectController.mieCoefficient
+            uniforms['mieDirectionalG'].value = effectController.mieDirectionalG
 
-        const uniforms = sky.material.uniforms;
+            const phi = MathUtils.degToRad(90 - effectController.elevation)
+            const theta = MathUtils.degToRad(effectController.azimuth)
 
-        uniforms[ 'turbidity' ].value = effectController.turbidity;
-        uniforms[ 'rayleigh' ].value = effectController.rayleigh;
-        uniforms[ 'mieCoefficient' ].value = effectController.mieCoefficient;
-        uniforms[ 'mieDirectionalG' ].value = effectController.mieDirectionalG;
+            sun.setFromSphericalCoords(1, phi, theta)
 
-        const phi = MathUtils.degToRad( 90 - effectController.elevation );
-        const theta = MathUtils.degToRad( effectController.azimuth );
+            uniforms['sunPosition'].value.copy(sun)
 
-        sun.setFromSphericalCoords( 1, phi, theta );
+            renderer.value.toneMappingExposure = effectController.exposure
+            scene.add(sky)
+        })
 
-        uniforms[ 'sunPosition' ].value.copy( sun );
+        function animate() {
+            if (!renderer.value) return
 
-        renderer.value.toneMappingExposure = effectController.exposure;
-        scene.add( sky );
-    })
+            if (transformControls.dragging) {
+                controls.enabled = false
+            } else if (!controls.enabled) {
+                controls.enabled = true
+            }
 
-    function animate() {
-        if (!renderer.value) return;
+            controls?.update()
 
-        if (transformControls.dragging) {
-            controls.enabled = false;
-        }
-        else if (!controls.enabled) {
-            controls.enabled = true;
+            renderer.value.render(scene, camera)
         }
 
-        controls?.update();
+        function onWindowResize() {
+            if (!renderer.value) return
 
-        renderer.value.render( scene, camera );
-    }
+            camera.aspect = window.innerWidth / window.innerHeight
+            camera.updateProjectionMatrix()
 
-    function onWindowResize() {
-        if (!renderer.value) return;
+            renderer.value.setSize(window.innerWidth, window.innerHeight)
 
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
+            animate()
+        }
 
-        renderer.value.setSize( window.innerWidth, window.innerHeight );
+        useEventListener(window, 'resize', onWindowResize)
+    })()
 
-        animate();
-    }
+    const { selectedObject } = (function useThreeControls() {
+        const selectedObject = ref<Object3D>()
+
+        watch(selectedObject, selectedObjectNew => {
+            if (selectedObjectNew) {
+                transformControls.attach(selectedObjectNew)
+            } else {
+                transformControls.detach()
+            }
+        })
+
+        useEventListener(window, 'keydown', event => {
+            if (event.key === 'g') {
+                transformControls.setMode('translate')
+            }
+            if (event.key === 'r') {
+                transformControls.setMode('rotate')
+            }
+            if (event.key === 's') {
+                transformControls.setMode('scale')
+            }
+
+            if (event.key === 'Delete') {
+                transformControls.detach()
+                selectedObject.value.removeFromParent()
+                selectedObject.value = undefined
+            }
+
+            if (event.key === 'Escape') {
+                transformControls.detach()
+                selectedObject.value = undefined
+            }
+        })
+
+        useEventListener(window, 'pointerdown', event => {
+            if (objects.value.length === 0) return
+
+            const raycaster = new Raycaster()
+            const mouse = new Vector2()
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+            raycaster.setFromCamera(mouse, camera)
+            const intersects = raycaster.intersectObjects(objects.value)
+
+            if (intersects.length === 0) return
+
+            if (selectedObject.value && intersects[0].object.uuid === selectedObject.value.uuid) {
+                if (transformControls.dragging) return
+
+                selectedObject.value = undefined
+            } else {
+                selectedObject.value = intersects[0].object
+            }
+        })
+
+        return {
+            selectedObject,
+        }
+    })()
 
     function convertToJson() {
-        transformControls.detach();
-        windowAPI.openSaveDialog(scene.toJSON() as unknown as JSON);
+        transformControls.detach()
+        windowAPI.openSaveDialog(scene.toJSON() as unknown as JSON)
     }
 
     return {
         threeContainer,
         selectedObject,
+        objects,
 
         convertToJson,
-    };
-});
+    }
+})
 
 // if (import.meta.hot) {
 //   import.meta.hot.accept(acceptHMRUpdate(useChatStore, import.meta.hot));

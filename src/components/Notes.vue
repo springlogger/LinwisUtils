@@ -1,19 +1,18 @@
 <script setup lang="ts">
-import { useEventListener } from '@vueuse/core';
-import { ref } from 'vue';
-import { useEditorStore } from '../stores/editor';
-import { storeToRefs } from 'pinia';
+import { useEventListener } from '@vueuse/core'
+import { ref } from 'vue'
+import { useEditorStore } from '../stores/editor'
+import { storeToRefs } from 'pinia'
 
-const leftSidebar = ref<HTMLDivElement>();
-const leftSidebarWidth = ref<number>(undefined);
+const leftSidebar = ref<HTMLDivElement>()
+const leftSidebarWidth = ref<number>(undefined)
 
-const editor = useEditorStore();
-const { editorContainer } = storeToRefs(editor);
+const editor = useEditorStore()
+const { editorContainer } = storeToRefs(editor)
 
-async function startResizing (event: MouseEvent) {
-
+async function startResizing(event: MouseEvent) {
     if (!leftSidebarWidth.value) {
-        leftSidebarWidth.value = leftSidebar.value.offsetWidth;
+        leftSidebarWidth.value = leftSidebar.value.offsetWidth
     }
 
     const startX = event.clientX
@@ -23,7 +22,7 @@ async function startResizing (event: MouseEvent) {
         const newWidth = startWidth + (moveEvent.clientX - startX)
 
         // вместо 300 нужно брать стартовое значение
-        leftSidebarWidth.value = Math.min(Math.max(300, newWidth), window.screen.width / 2.5);
+        leftSidebarWidth.value = Math.min(Math.max(300, newWidth), window.screen.width / 2.5)
     }
 
     const onMouseUp = () => {
@@ -31,16 +30,17 @@ async function startResizing (event: MouseEvent) {
         window.removeEventListener('mouseup', onMouseUp)
     }
 
-    useEventListener(window, 'mousemove', onMouseMove);
-    useEventListener(window, 'mouseup', onMouseUp);
+    useEventListener(window, 'mousemove', onMouseMove)
+    useEventListener(window, 'mouseup', onMouseUp)
 }
-
 </script>
 
 <template>
     <div class="w-full h-screen flex flex-row jetbrains-mono-code text-white">
-        <div ref="leftSidebar" class="h-screen bg-[#1f1f1f] flex flex-row justify-center relative p-6" 
-        :style="{ width: leftSidebarWidth !== undefined ? `${leftSidebarWidth}px` : '20%' }"
+        <div
+            ref="leftSidebar"
+            class="h-screen bg-[#1f1f1f] flex flex-row justify-center relative p-6"
+            :style="{ width: leftSidebarWidth !== undefined ? `${leftSidebarWidth}px` : '20%' }"
         >
             <div class="flex flex-col justify-between items-center py-10">
                 <div class="flex flex-col gap-y-10">
@@ -63,21 +63,22 @@ async function startResizing (event: MouseEvent) {
                         <p>Pinned Notes</p>
                     </div>
                 </div>
-                <div>
-                    Another Options
-                </div>
+                <div>Another Options</div>
             </div>
 
-            <div @mousedown.prevent="startResizing" class="w-fit h-screen absolute right-0 cursor-ew-resize p-[1px]">
-            </div>
+            <div
+                @mousedown.prevent="startResizing"
+                class="w-fit h-screen absolute right-0 cursor-ew-resize p-[1px]"
+            ></div>
         </div>
-        <div class="w-full h-screen bg-[#141414] ">
-            <div ref="editorContainer" class="w-full h-screen whitespace-pre-wrap p-2 focus:outline-none"></div>
+        <div class="w-full h-screen bg-[#141414]">
+            <div
+                ref="editorContainer"
+                class="w-full h-screen whitespace-pre-wrap p-2 focus:outline-none"
+            ></div>
         </div>
         <div class="w-1/5 h-screen bg-[#1f1f1f]">
-            <div>
-                Calendar
-            </div>
+            <div>Calendar</div>
             <div>
                 <h2>Note actions</h2>
                 <div>
@@ -93,20 +94,20 @@ async function startResizing (event: MouseEvent) {
 <style scoped>
 /* Для блочного кода */
 .prosemirror-editor > p > pre {
-  font-family: "Fira Code", monospace;
-  background-color: #1e1e1e;
-  color: #dcdcdc;
-  padding: 8px;
-  border-radius: 4px;
-  overflow-x: auto;
+    font-family: 'Fira Code', monospace;
+    background-color: #1e1e1e;
+    color: #dcdcdc;
+    padding: 8px;
+    border-radius: 4px;
+    overflow-x: auto;
 }
 
 /* Для инлайн-кода */
 .prosemirror-editor > p > code {
-  font-family: "Fira Code", monospace;
-  background-color: #2d2d2d;
-  color: #f8f8f8;
-  padding: 2px 4px;
-  border-radius: 4px;
+    font-family: 'Fira Code', monospace;
+    background-color: #2d2d2d;
+    color: #f8f8f8;
+    padding: 2px 4px;
+    border-radius: 4px;
 }
 </style>
