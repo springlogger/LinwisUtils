@@ -48,6 +48,7 @@ function openDialog() {
             </button>
 
             <button
+                v-if="three.objects.length > 0"
                 @click="three.convertToJson"
                 class="rounded-2xl cursor-pointer p-2 hover:text-black hover:bg-white bg-[#343434] transition-all ease-out duration-100"
             >

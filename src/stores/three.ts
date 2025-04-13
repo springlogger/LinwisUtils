@@ -4,6 +4,7 @@ import {
     ACESFilmicToneMapping,
     GridHelper,
     MathUtils,
+    Matrix4,
     Object3D,
     PerspectiveCamera,
     PMREMGenerator,
@@ -155,6 +156,9 @@ export const useThreeStore = defineStore('three', () => {
     const { selectedObject } = (function useThreeControls() {
         const selectedObject = ref<Object3D>()
 
+        const lastTransformMatrix4 = new Matrix4()
+        let lastTransformObject: Object3D | undefined = undefined
+
         function findRootParentInList(object: Object3D, list: Object3D[]): Object3D | null {
             let current: Object3D | null = object
             while (current) {
@@ -167,6 +171,8 @@ export const useThreeStore = defineStore('three', () => {
         watch(selectedObject, selectedObjectNew => {
             if (selectedObjectNew) {
                 transformControls.attach(selectedObjectNew)
+                lastTransformMatrix4.copy(selectedObjectNew.matrix)
+                lastTransformObject = selectedObjectNew
             } else {
                 transformControls.detach()
             }
@@ -192,6 +198,15 @@ export const useThreeStore = defineStore('three', () => {
             if (event.key === 'Escape') {
                 transformControls.detach()
                 selectedObject.value = undefined
+            }
+
+            if (event.ctrlKey && event.key === 'z' && lastTransformMatrix4 && lastTransformObject) {
+                lastTransformObject.matrix.copy(lastTransformMatrix4)
+                lastTransformObject.matrix.decompose(
+                    lastTransformObject.position,
+                    lastTransformObject.quaternion,
+                    lastTransformObject.scale
+                )
             }
         })
 
