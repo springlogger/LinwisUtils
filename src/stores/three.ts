@@ -1,10 +1,14 @@
 import { watchImmediate, useEventListener } from '@vueuse/core'
 import { defineStore } from 'pinia'
+import { usePhysic } from '../composables/usePhysics'
 import {
     ACESFilmicToneMapping,
+    BoxGeometry,
     GridHelper,
     MathUtils,
     Matrix4,
+    Mesh,
+    MeshNormalMaterial,
     Object3D,
     PerspectiveCamera,
     PMREMGenerator,
@@ -19,7 +23,7 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { Sky } from 'three/examples/jsm/objects/Sky'
-import { ref, shallowRef, watch, watchEffect } from 'vue'
+import { onWatcherCleanup, ref, shallowRef, watch, watchEffect } from 'vue'
 
 export const useThreeStore = defineStore('three', () => {
     const threeContainer = ref<HTMLCanvasElement | undefined>()
@@ -33,6 +37,33 @@ export const useThreeStore = defineStore('three', () => {
 
     let transformControls: TransformControls | undefined = undefined
     let controls: OrbitControls | undefined = undefined
+
+    const { physic } = (function initPhysics() {
+        const physic = ref<Awaited<ReturnType<typeof usePhysic>> | null>(null)
+
+        watchImmediate(threeContainer, async () => {
+            const floor = new Mesh(
+                new BoxGeometry(6, 2, 6),
+                new MeshNormalMaterial({ visible: false })
+            )
+            floor.position.y = -1
+
+            floor.userData.physics = { mass: 0 }
+            scene.add(floor)
+
+            await initPhysic()
+        })
+
+        async function initPhysic() {
+            physic.value = await usePhysic()
+
+            physic.value.addScene(scene)
+        }
+
+        return {
+            physic,
+        }
+    })()
 
     const { objects } = (function useObjectLoader() {
         const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>()
@@ -51,7 +82,14 @@ export const useThreeStore = defineStore('three', () => {
                 new Uint8Array(objectBuffer.value).buffer,
                 '',
                 gltf => {
+                    // for rapier physics
+                    gltf.scene.userData.physics = { mass: 1, restitution: 1.1 }
+
+                    gltf.scene.scale.set(0.5, 0.5, 0.5)
+                    gltf.scene.position.set(0, 1, 0)
+
                     scene.add(gltf.scene)
+                    physic.value?.addMesh(gltf.scene, 1, 1)
 
                     for (const object of gltf.scene.children) {
                         objects.value.push(object)
@@ -72,6 +110,12 @@ export const useThreeStore = defineStore('three', () => {
         const renderer = shallowRef<WebGLRenderer | undefined>()
 
         watchImmediate(threeContainer, () => {
+            onWatcherCleanup(() => {
+                renderer.value = undefined
+                physic.value = undefined
+                controls = undefined
+                transformControls = undefined
+            })
             if (!threeContainer.value) return
 
             renderer.value = new WebGLRenderer({ canvas: threeContainer.value })
