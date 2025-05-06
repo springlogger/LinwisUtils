@@ -41,23 +41,18 @@ export const useThreeStore = defineStore('three', () => {
     const { physic } = (function initPhysics() {
         const physic = ref<Awaited<ReturnType<typeof usePhysic>> | null>(null)
 
-        watchImmediate(threeContainer, async () => {
-            const floor = new Mesh(
-                new BoxGeometry(6, 2, 6),
-                new MeshNormalMaterial({ visible: false })
-            )
-            floor.position.y = -1
-
-            floor.userData.physics = { mass: 0 }
-            scene.add(floor)
-
-            await initPhysic()
-        })
+        watch(
+            threeContainer,
+            async () => {
+                await initPhysic()
+            },
+            { once: true, immediate: true }
+        )
 
         async function initPhysic() {
             physic.value = await usePhysic()
 
-            physic.value.addScene(scene)
+            physic.value.createPhysicalFloor(scene)
         }
 
         return {
@@ -82,14 +77,12 @@ export const useThreeStore = defineStore('three', () => {
                 new Uint8Array(objectBuffer.value).buffer,
                 '',
                 gltf => {
-                    // for rapier physics
-                    gltf.scene.userData.physics = { mass: 1, restitution: 1.1 }
+                    const initialPosition = new Vector3(0, 5, 0)
+                    gltf.scene.position.copy(initialPosition)
 
-                    gltf.scene.scale.set(0.5, 0.5, 0.5)
-                    gltf.scene.position.set(0, 1, 0)
+                    physic.value?.addMesh(gltf.scene, 0.01, 0.2, scene)
 
                     scene.add(gltf.scene)
-                    physic.value?.addMesh(gltf.scene, 1, 1)
 
                     for (const object of gltf.scene.children) {
                         objects.value.push(object)

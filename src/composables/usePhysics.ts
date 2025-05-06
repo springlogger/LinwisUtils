@@ -1,19 +1,23 @@
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils'
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js'
 import {
     BoxGeometry,
+    BufferAttribute,
     BufferGeometry,
     Clock,
     IcosahedronGeometry,
     InstancedMesh,
     Matrix4,
     Mesh,
+    MeshBasicMaterial,
+    MeshStandardMaterial,
     Object3D,
     Quaternion,
     Scene,
     SphereGeometry,
     Vector3,
 } from 'three'
-import { ColliderDesc, RigidBody } from '@dimforge/rapier3d-compat'
+import { ColliderDesc, RigidBody, World } from '@dimforge/rapier3d-compat'
 
 let rapier: typeof import('@dimforge/rapier3d-compat') | null = null
 
@@ -21,6 +25,8 @@ const frameRate = 60
 const ZERO = new Vector3()
 const _scale = new Vector3(1, 1, 1)
 
+// https://rapier.rs/docs/api/javascript/JavaScript3D/
+// https://rapier.rs/docs/user_guides/javascript/getting_started_js/
 export async function usePhysic() {
     if (rapier === null) {
         rapier = await import('@dimforge/rapier3d-compat')
@@ -41,14 +47,6 @@ export async function usePhysic() {
 
     setInterval(step, 1000 / frameRate)
 
-    //   // https://rapier.rs/docs/api/javascript/JavaScript3D/
-    //   // https://rapier.rs/docs/user_guides/javascript/getting_started_js/
-
-    //   physics = await RapierPhysics();
-
-    //   // userData.physics = mass, restitution
-    //   // also can set mesh velocity by physics.setMeshVelocity(mesh, velocity, index?)
-
     function addScene(scene: Scene) {
         scene.traverse(function (child) {
             if (child instanceof Mesh && child.isMesh) {
@@ -61,8 +59,63 @@ export async function usePhysic() {
         })
     }
 
+    function createPhysicalFloor(scene: Scene) {
+        const size = { x: 10, y: 0.2, z: 10 }
+
+        const floorGeometry = new BoxGeometry(size.x, size.y, size.z)
+        const floorMaterial = new MeshStandardMaterial({ color: 0x888888 })
+        const floorMesh = new Mesh(floorGeometry, floorMaterial)
+
+        floorMesh.position.set(0, -size.y / 2, 0)
+        floorMesh.receiveShadow = true
+
+        scene.add(floorMesh)
+
+        const floorBodyDesc = rapier.RigidBodyDesc.fixed()
+        const floorBody = world.createRigidBody(floorBodyDesc)
+
+        const floorColliderDesc = ColliderDesc.cuboid(size.x / 2, size.y / 2, size.z / 2)
+
+        world.createCollider(floorColliderDesc, floorBody)
+    }
+
+    function showTrimeshCollider(vertices: number[], indices: Uint32Array, scene: Scene) {
+        const geometry = new BufferGeometry()
+        const positions = new Float32Array(vertices)
+        geometry.setAttribute('position', new BufferAttribute(positions, 3))
+
+        const material = new MeshBasicMaterial({ color: 0x0000ff, wireframe: true })
+        const mesh = new Mesh(geometry, material)
+
+        geometry.setIndex(new BufferAttribute(indices, 1))
+
+        scene.add(mesh)
+    }
+
+    function visualizeConvexHull(vertices: number[], scene: Scene) {
+        const points = []
+        for (let i = 0; i < vertices.length; i += 3) {
+            points.push(new Vector3(vertices[i], vertices[i + 1], vertices[i + 2]))
+        }
+
+        const geometry = new ConvexGeometry(points)
+
+        const material = new MeshBasicMaterial({
+            color: 0xff0000,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.5,
+        })
+
+        const mesh = new Mesh(geometry, material)
+        scene.add(mesh)
+
+        return mesh
+    }
+
     function getShape(
-        geometry: BufferGeometry | BoxGeometry | SphereGeometry | IcosahedronGeometry
+        geometry: BufferGeometry | BoxGeometry | SphereGeometry | IcosahedronGeometry,
+        scene: Scene
     ) {
         if (geometry.type === 'BoxGeometry' && geometry instanceof BoxGeometry) {
             const parameters = geometry.parameters
@@ -80,21 +133,31 @@ export async function usePhysic() {
             const radius = parameters.radius !== undefined ? parameters.radius : 1
             return rapier.ColliderDesc.ball(radius)
         } else if (geometry.type === 'BufferGeometry') {
-            const vertices = []
-            const vertex = new Vector3()
-            const position = geometry.getAttribute('position')
+            // const vertices = []
+            // const pos = geometry.getAttribute('position')
 
-            for (let i = 0; i < position.count; i++) {
-                vertex.fromBufferAttribute(position, i)
-                vertices.push(vertex.x, vertex.y, vertex.z)
+            // for (let i = 0; i < pos.count; i++) {
+            //     vertices.push(pos.getX(i), pos.getY(i), pos.getZ(i))
+            // }
+
+            // const indices =
+            //     geometry.getIndex() === null
+            //         ? Uint32Array.from(Array(vertices.length / 3).keys())
+            //         : new Uint32Array(geometry.getIndex().array)
+
+            // showTrimeshCollider(vertices, indices, scene)
+
+            // return rapier.ColliderDesc.trimesh(new Float32Array(vertices), indices)
+
+            const vertices = []
+            const pos = geometry.getAttribute('position')
+            for (let i = 0; i < pos.count; i++) {
+                vertices.push(pos.getX(i), pos.getY(i), pos.getZ(i))
             }
 
-            const indices =
-                geometry.getIndex() === null
-                    ? Uint32Array.from(Array(vertices.length / 3).keys())
-                    : new Uint32Array(geometry.getIndex().array)
+            visualizeConvexHull(vertices, scene)
 
-            return rapier.ColliderDesc.trimesh(new Float32Array(vertices), indices)
+            return rapier.ColliderDesc.convexHull(new Float32Array(vertices))
         }
 
         return null
@@ -116,10 +179,15 @@ export async function usePhysic() {
 
         if (geometries.length === 0) return null
 
-        return mergeGeometries(geometries, true)
+        return mergeGeometries(geometries, false)
     }
 
-    function addMesh(mesh: Mesh | InstancedMesh | Object3D, mass = 0, restitution = 0) {
+    function addMesh(
+        mesh: Mesh | InstancedMesh | Object3D,
+        mass = 0,
+        restitution = 0,
+        scene?: Scene
+    ) {
         let geometry: BufferGeometry | BoxGeometry | SphereGeometry | IcosahedronGeometry
 
         if (!(mesh instanceof Mesh) && !(mesh instanceof InstancedMesh)) {
@@ -128,7 +196,7 @@ export async function usePhysic() {
             geometry = mesh.geometry
         }
 
-        const shape = getShape(geometry)
+        const shape = getShape(geometry, scene)
 
         if (shape === null) return
 
@@ -234,5 +302,6 @@ export async function usePhysic() {
         addMesh,
         setMeshPosition,
         setMeshVelocity,
+        createPhysicalFloor,
     }
 }
