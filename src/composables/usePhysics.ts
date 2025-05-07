@@ -37,7 +37,7 @@ export async function usePhysic() {
     const world = new rapier.World(gravity)
 
     const meshes: Array<Mesh | Object3D | InstancedMesh> = []
-    const meshMap: WeakMap<Mesh | InstancedMesh | Object3D, RigidBody | RigidBody[]> = new WeakMap()
+    const meshMap = new Map<string, RigidBody | RigidBody[]>()
 
     const _vector = new Vector3()
     const _quaternion = new Quaternion()
@@ -46,18 +46,6 @@ export async function usePhysic() {
     const clock = new Clock()
 
     setInterval(step, 1000 / frameRate)
-
-    function addScene(scene: Scene) {
-        scene.traverse(function (child) {
-            if (child instanceof Mesh && child.isMesh) {
-                const physics = child.userData.physics
-
-                if (physics) {
-                    addMesh(child, physics.mass, physics.restitution)
-                }
-            }
-        })
-    }
 
     function createPhysicalFloor(scene: Scene) {
         const size = { x: 10, y: 0.2, z: 10 }
@@ -79,35 +67,50 @@ export async function usePhysic() {
         world.createCollider(floorColliderDesc, floorBody)
     }
 
-    function showTrimeshCollider(vertices: number[], indices: Uint32Array, scene: Scene) {
-        const geometry = new BufferGeometry()
-        const positions = new Float32Array(vertices)
-        geometry.setAttribute('position', new BufferAttribute(positions, 3))
+    function visualizeCollider(options: {
+        type: 'box' | 'sphere' | 'convex' | 'trimesh'
+        params: any
+        scene: Scene
+        position?: Vector3
+        color?: number
+    }) {
+        const { type, params, scene, position = new Vector3(), color = 0xff0000 } = options
 
-        const material = new MeshBasicMaterial({ color: 0x0000ff, wireframe: true })
-        const mesh = new Mesh(geometry, material)
+        let geometry: BufferGeometry
 
-        geometry.setIndex(new BufferAttribute(indices, 1))
-
-        scene.add(mesh)
-    }
-
-    function visualizeConvexHull(vertices: number[], scene: Scene) {
-        const points = []
-        for (let i = 0; i < vertices.length; i += 3) {
-            points.push(new Vector3(vertices[i], vertices[i + 1], vertices[i + 2]))
+        if (type === 'box') {
+            const { hx, hy, hz } = params
+            geometry = new BoxGeometry(hx * 2, hy * 2, hz * 2)
+        } else if (type === 'sphere') {
+            const { radius } = params
+            geometry = new SphereGeometry(radius, 16, 16)
+        } else if (type === 'convex') {
+            const { vertices } = params
+            const points = []
+            for (let i = 0; i < vertices.length; i += 3) {
+                points.push(new Vector3(vertices[i], vertices[i + 1], vertices[i + 2]))
+            }
+            geometry = new ConvexGeometry(points)
+        } else if (type === 'trimesh') {
+            const { vertices, indices } = params
+            geometry = new BufferGeometry()
+            geometry.setAttribute('position', new BufferAttribute(new Float32Array(vertices), 3))
+            geometry.setIndex(new BufferAttribute(indices, 1))
+            geometry.computeVertexNormals()
+        } else {
+            throw new Error('Unknown collider type')
         }
 
-        const geometry = new ConvexGeometry(points)
-
         const material = new MeshBasicMaterial({
-            color: 0xff0000,
+            color,
             wireframe: true,
             transparent: true,
             opacity: 0.5,
+            depthTest: false,
         })
 
         const mesh = new Mesh(geometry, material)
+        mesh.position.copy(position)
         scene.add(mesh)
 
         return mesh
@@ -155,7 +158,11 @@ export async function usePhysic() {
                 vertices.push(pos.getX(i), pos.getY(i), pos.getZ(i))
             }
 
-            visualizeConvexHull(vertices, scene)
+            // visualizeCollider({
+            //     type: 'convex',
+            //     params: { vertices },
+            //     scene,
+            // })
 
             return rapier.ColliderDesc.convexHull(new Float32Array(vertices))
         }
@@ -180,6 +187,35 @@ export async function usePhysic() {
         if (geometries.length === 0) return null
 
         return mergeGeometries(geometries, false)
+    }
+
+    function createInstancedBody(mesh: InstancedMesh, mass: number, shape: ColliderDesc) {
+        const array = mesh.instanceMatrix.array
+
+        const bodies = []
+
+        for (let i = 0; i < mesh.count; i++) {
+            const position = _vector.fromArray(array, i * 16 + 12)
+            bodies.push(createBody(position, null, mass, shape))
+        }
+
+        return bodies
+    }
+
+    function createBody(
+        position: Vector3,
+        quaternion: Quaternion,
+        mass: number,
+        shape: ColliderDesc
+    ) {
+        const desc = mass > 0 ? rapier.RigidBodyDesc.dynamic() : rapier.RigidBodyDesc.fixed()
+        desc.setTranslation(position.x, position.y, position.z)
+        if (quaternion !== null) desc.setRotation(quaternion)
+
+        const body = world.createRigidBody(desc)
+        world.createCollider(shape, body)
+
+        return body
     }
 
     function addMesh(
@@ -213,41 +249,57 @@ export async function usePhysic() {
 
         if (mass > 0) {
             meshes.push(mesh)
-            meshMap.set(mesh, body)
+            meshMap.set(mesh.uuid, body)
         }
     }
 
-    function createInstancedBody(mesh: InstancedMesh, mass: number, shape: ColliderDesc) {
-        const array = mesh.instanceMatrix.array
+    function setMeshPhysics(mesh: Mesh | InstancedMesh | Object3D, enabled: boolean, index = 0) {
+        let body = meshMap.get(mesh.uuid)
 
-        const bodies = []
-
-        for (let i = 0; i < mesh.count; i++) {
-            const position = _vector.fromArray(array, i * 16 + 12)
-            bodies.push(createBody(position, null, mass, shape))
+        if (mesh instanceof InstancedMesh && Array.isArray(body)) {
+            body = body[index]
         }
 
-        return bodies
+        if (enabled) {
+            ;(body as RigidBody).setBodyType(rapier.RigidBodyType.KinematicPositionBased, true)
+        } else {
+            ;(body as RigidBody).setBodyType(rapier.RigidBodyType.Dynamic, true)
+        }
     }
 
-    function createBody(
+    function setMeshKinematicMatrix(
+        mesh: Mesh | InstancedMesh | Object3D,
         position: Vector3,
         quaternion: Quaternion,
-        mass: number,
-        shape: ColliderDesc
+        index = 0
     ) {
-        const desc = mass > 0 ? rapier.RigidBodyDesc.dynamic() : rapier.RigidBodyDesc.fixed()
-        desc.setTranslation(position.x, position.y, position.z)
-        if (quaternion !== null) desc.setRotation(quaternion)
+        let body = meshMap.get(mesh.uuid)
 
-        const body = world.createRigidBody(desc)
-        world.createCollider(shape, body)
+        if (mesh instanceof InstancedMesh && Array.isArray(body)) {
+            body = body[index]
+        }
 
-        return body
+        ;(body as RigidBody).setNextKinematicTranslation({
+            x: position.x,
+            y: position.y,
+            z: position.z,
+        })
+        ;(body as RigidBody).setNextKinematicRotation({
+            x: quaternion.x,
+            y: quaternion.y,
+            z: quaternion.z,
+            w: quaternion.w,
+        })
     }
 
-    function setMeshPosition(mesh: Mesh | InstancedMesh, position: Vector3, index = 0) {
-        let body = meshMap.get(mesh)
+    const disableMeshPhysics = (mesh: Mesh | InstancedMesh | Object3D, index = 0) =>
+        setMeshPhysics(mesh, false, index)
+
+    const enableMeshPhysics = (mesh: Mesh | InstancedMesh | Object3D, index = 0) =>
+        setMeshPhysics(mesh, true, index)
+
+    function setMeshPosition(mesh: Mesh | InstancedMesh | Object3D, position: Vector3, index = 0) {
+        let body = meshMap.get(mesh.uuid)
 
         if (mesh instanceof InstancedMesh && mesh.isInstancedMesh && Array.isArray(body)) {
             body = body[index]
@@ -259,8 +311,8 @@ export async function usePhysic() {
         body.setTranslation(position, true)
     }
 
-    function setMeshVelocity(mesh: Mesh | InstancedMesh, velocity: Vector3, index = 0) {
-        let body = meshMap.get(mesh)
+    function setMeshVelocity(mesh: Mesh | InstancedMesh | Object3D, velocity: Vector3, index = 0) {
+        let body = meshMap.get(mesh.uuid)
 
         if (mesh instanceof InstancedMesh && mesh.isInstancedMesh && Array.isArray(body)) {
             body = body[index]
@@ -279,7 +331,7 @@ export async function usePhysic() {
 
             if (mesh instanceof InstancedMesh && mesh.isInstancedMesh) {
                 const array = mesh.instanceMatrix.array
-                const bodies = meshMap.get(mesh) as RigidBody[]
+                const bodies = meshMap.get(mesh.uuid) as RigidBody[]
                 for (let j = 0; j < bodies.length; j++) {
                     const body = bodies[j]
                     const position = body.translation() as Vector3
@@ -289,7 +341,7 @@ export async function usePhysic() {
                 mesh.instanceMatrix.needsUpdate = true
                 mesh.computeBoundingSphere()
             } else {
-                const body = meshMap.get(mesh) as RigidBody
+                const body = meshMap.get(mesh.uuid) as RigidBody
 
                 mesh.position.copy(body.translation())
                 mesh.quaternion.copy(body.rotation())
@@ -298,10 +350,12 @@ export async function usePhysic() {
     }
 
     return {
-        addScene,
         addMesh,
         setMeshPosition,
         setMeshVelocity,
         createPhysicalFloor,
+        disableMeshPhysics,
+        enableMeshPhysics,
+        setMeshKinematicMatrix,
     }
 }

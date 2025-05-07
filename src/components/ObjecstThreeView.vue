@@ -18,6 +18,7 @@ const expanded = ref(false);
 
 <template>
     <tr 
+        v-if="selectedObject"
         @click="selectedObject = object" 
         class="cursor-pointer"
         :class="{

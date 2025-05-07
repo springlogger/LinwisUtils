@@ -32,8 +32,8 @@ export const useThreeStore = defineStore('three', () => {
     const camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 5
 
-    const helper = new GridHelper(10000, 2, 0xffffff, 0xffffff)
-    scene.add(helper)
+    // const helper = new GridHelper(10000, 2, 0xffffff, 0xffffff)
+    // scene.add(helper)
 
     let transformControls: TransformControls | undefined = undefined
     let controls: OrbitControls | undefined = undefined
@@ -77,15 +77,22 @@ export const useThreeStore = defineStore('three', () => {
                 new Uint8Array(objectBuffer.value).buffer,
                 '',
                 gltf => {
-                    const initialPosition = new Vector3(0, 5, 0)
-                    gltf.scene.position.copy(initialPosition)
+                    // const initialPosition = new Vector3(0, 2, 0)
+                    // gltf.scene.position.copy(initialPosition)
 
-                    physic.value?.addMesh(gltf.scene, 0.01, 0.2, scene)
+                    // physic.value?.addMesh(gltf.scene, 0.01, 0, scene)
+                    // physic.value?.setMeshPosition(gltf.scene, new Vector3(0, 2, 0))
 
-                    scene.add(gltf.scene)
+                    // scene.add(gltf.scene)
 
                     for (const object of gltf.scene.children) {
+                        const initialPosition = new Vector3(0, 2, 0)
+                        object.position.copy(initialPosition)
+
                         objects.value.push(object)
+                        physic.value?.addMesh(object, 0.01, 0, scene)
+                        // physic.value?.setMeshPosition(object, new Vector3(0, 2, 0))
+                        scene.add(object)
                     }
                 },
                 err => {
@@ -205,13 +212,32 @@ export const useThreeStore = defineStore('three', () => {
             return null
         }
 
-        watch(selectedObject, selectedObjectNew => {
+        const onSelectedObjectDrug = () => {
+            if (!selectedObject.value) {
+                return
+            }
+
+            const pos = selectedObject.value.position
+            const quat = selectedObject.value.quaternion
+
+            physic.value.setMeshKinematicMatrix(selectedObject.value, pos, quat)
+        }
+
+        watch(selectedObject, (selectedObjectNew, selectedObjectOld) => {
             if (selectedObjectNew) {
+                physic.value.enableMeshPhysics(selectedObjectNew)
                 transformControls.attach(selectedObjectNew)
                 lastTransformMatrix4.copy(selectedObjectNew.matrix)
                 lastTransformObject = selectedObjectNew
+
+                transformControls.addEventListener('objectChange', onSelectedObjectDrug)
             } else {
+                transformControls.removeEventListener('objectChange', onSelectedObjectDrug)
                 transformControls.detach()
+
+                if (selectedObjectOld) {
+                    physic.value.disableMeshPhysics(selectedObjectOld)
+                }
             }
         })
 
