@@ -18,12 +18,11 @@ const expanded = ref(false);
 
 <template>
     <tr 
-        v-if="selectedObject"
         @click="selectedObject = object" 
         class="cursor-pointer"
         :class="{
-            'bg-blue-900 hover:bg-blue-800': selectedObject.uuid === object.uuid,
-            'hover:bg-[#1f1f1f]': selectedObject.uuid !== object.uuid,
+            'bg-blue-900 hover:bg-blue-800': selectedObject && selectedObject.uuid === object.uuid,
+            'hover:bg-[#1f1f1f]': selectedObject && selectedObject.uuid !== object.uuid,
         }"
     >
       <td :style="{ paddingLeft: `${level * 16 + 16}px` }" class="py-1">

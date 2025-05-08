@@ -38,7 +38,7 @@ function testUser() {
     <div
         @mouseenter="mouseEnter"
         @mouseleave="mouseLeave"
-        class="p-2 w-14 lg:w-20 bg-[#000002] h-screen text-[#f9ffff] jetbrains-mono-code transition-all ease-in-out delay-[`${delay}`] hover:w-48 lg:hover:w-80 duration-300"
+        class="p-2 z-50 w-14 lg:w-20 bg-[#000002] h-screen text-[#f9ffff] jetbrains-mono-code transition-all ease-in-out delay-[`${delay}`] hover:w-48 lg:hover:w-80 duration-300"
         :class="{
             'absolute left-0': selectedPage === 'Editor',
         }"

@@ -11,10 +11,10 @@ const selectedPage = ref<string>('Editor')
 </script>
 
 <template>
-    <div class="flex flex-row">
+    <div class="flex flex-row relative">
         <SideBar v-model:selectedPage="selectedPage" />
 
-        <div v-show="selectedPage === 'Editor'">
+        <div v-show="selectedPage === 'Editor'" class="w-full">
             <ObjectViewer />
         </div>
 
