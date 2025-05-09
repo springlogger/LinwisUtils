@@ -4,11 +4,14 @@ import { usePhysic } from '../composables/usePhysics'
 import {
     ACESFilmicToneMapping,
     BoxGeometry,
-    GridHelper,
     MathUtils,
     Matrix4,
     Mesh,
+    MeshBasicMaterial,
+    MeshLambertMaterial,
     MeshNormalMaterial,
+    MeshPhysicalMaterial,
+    MeshStandardMaterial,
     Object3D,
     PerspectiveCamera,
     PMREMGenerator,
@@ -23,6 +26,9 @@ import { TransformControls } from 'three/examples/jsm/controls/TransformControls
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { Sky } from 'three/examples/jsm/objects/Sky'
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer'
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass'
+import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass'
 import { onWatcherCleanup, ref, shallowRef, watch, watchEffect } from 'vue'
 
 export const useThreeStore = defineStore('three', () => {
@@ -35,80 +41,11 @@ export const useThreeStore = defineStore('three', () => {
     let transformControls: TransformControls | undefined = undefined
     let controls: OrbitControls | undefined = undefined
 
-    const { physic } = (function initPhysics() {
-        const physic = ref<Awaited<ReturnType<typeof usePhysic>> | null>(null)
-
-        watch(
-            threeContainer,
-            async () => {
-                await initPhysic()
-            },
-            { once: true, immediate: true }
-        )
-
-        async function initPhysic() {
-            physic.value = await usePhysic()
-
-            physic.value.createPhysicalFloor(scene)
-        }
-
-        return {
-            physic,
-        }
-    })()
-
-    const { objects, addCube } = (function useObjectLoader() {
-        const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>()
-        const objects = ref<Object3D[]>([])
-
-        const loader = new GLTFLoader()
-        const initialPosition = new Vector3(0, 2, 0)
-
-        windowAPI.dialogResponse((_, response) => {
-            objectBuffer.value = response
-        })
-
-        watch(objectBuffer, async () => {
-            if (!objectBuffer.value) return
-
-            loader.parse(
-                new Uint8Array(objectBuffer.value).buffer,
-                '',
-                gltf => {
-                    for (const object of gltf.scene.children) {
-                        object.position.copy(initialPosition)
-
-                        objects.value.push(object)
-                        physic.value?.addMesh(object, 0.01, 0, scene)
-                        scene.add(object)
-                    }
-                },
-                err => {
-                    console.log(err)
-                }
-            )
-        })
-
-        function addCube() {
-            const cubeGeometry = new BoxGeometry(1, 1, 1)
-            const cubeMaterial = new MeshNormalMaterial()
-
-            const cube = new Mesh(cubeGeometry, cubeMaterial)
-
-            cube.position.copy(initialPosition)
-            objects.value.push(cube)
-            physic.value?.addMesh(cube, 0.01, 0, scene)
-            scene.add(cube)
-        }
-
-        return {
-            objects,
-            addCube,
-        }
-    })()
+    let outlinePass: OutlinePass | undefined = undefined
 
     ;(function useInitRender() {
         const renderer = shallowRef<WebGLRenderer | undefined>()
+        const composer = shallowRef<EffectComposer | undefined>()
 
         watchImmediate(threeContainer, () => {
             onWatcherCleanup(() => {
@@ -132,6 +69,31 @@ export const useThreeStore = defineStore('three', () => {
 
             const pmremGenerator = new PMREMGenerator(renderer.value)
             scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture
+        })
+
+        watchEffect(() => {
+            if (!renderer.value) {
+                return
+            }
+
+            composer.value = new EffectComposer(renderer.value)
+            composer.value.setSize(window.innerWidth, window.innerHeight)
+
+            const renderPass = new RenderPass(scene, camera)
+            composer.value.addPass(renderPass)
+
+            outlinePass = new OutlinePass(
+                new Vector2(window.innerWidth, window.innerHeight),
+                scene,
+                camera
+            )
+            composer.value.addPass(outlinePass)
+
+            outlinePass.edgeStrength = 10 // Увеличь толщину подсветки
+            outlinePass.edgeGlow = 1 // Попробуй добавить немного свечения
+            outlinePass.edgeThickness = 3 // Увеличь толщину границы
+            outlinePass.visibleEdgeColor.set('#ff0000') // Сделай цвет подсветки ярким, например, красным
+            outlinePass.hiddenEdgeColor.set('#ff0000') // Сделай невидимые края того же цвета
         })
 
         watchEffect(() => {
@@ -171,7 +133,7 @@ export const useThreeStore = defineStore('three', () => {
         })
 
         function animate() {
-            if (!renderer.value) return
+            if (!renderer.value || !composer.value) return
 
             if (transformControls.dragging) {
                 controls.enabled = false
@@ -179,9 +141,7 @@ export const useThreeStore = defineStore('three', () => {
                 controls.enabled = true
             }
 
-            controls?.update()
-
-            renderer.value.render(scene, camera)
+            composer.value.render()
         }
 
         function onWindowResize() {
@@ -191,6 +151,7 @@ export const useThreeStore = defineStore('three', () => {
             camera.updateProjectionMatrix()
 
             renderer.value.setSize(window.innerWidth, window.innerHeight)
+            composer.value.setSize(window.innerWidth, window.innerHeight)
 
             animate()
         }
@@ -198,115 +159,214 @@ export const useThreeStore = defineStore('three', () => {
         useEventListener(window, 'resize', onWindowResize)
     })()
 
-    const { selectedObject } = (function useThreeControls() {
-        const selectedObject = ref<Object3D>()
+    const { physic } = (function initPhysics() {
+        const physic = ref<Awaited<ReturnType<typeof usePhysic>> | null>(null)
 
-        const lastTransformMatrix4 = new Matrix4()
-        let lastTransformObject: Object3D | undefined = undefined
+        watch(
+            threeContainer,
+            async () => {
+                await initPhysic()
+            },
+            { once: true, immediate: true }
+        )
 
-        function findRootParentInList(object: Object3D, list: Object3D[]): Object3D | null {
-            let current: Object3D | null = object
-            while (current) {
-                if (list.includes(current)) return current
-                current = current.parent
-            }
-            return null
+        async function initPhysic() {
+            physic.value = await usePhysic()
+
+            physic.value.createPhysicalFloor(scene)
         }
-
-        const onSelectedObjectDrug = () => {
-            if (!selectedObject.value) {
-                return
-            }
-
-            const pos = selectedObject.value.position
-            const quat = selectedObject.value.quaternion
-
-            physic.value.setMeshKinematicMatrix(selectedObject.value, pos, quat)
-        }
-
-        watch(selectedObject, (selectedObjectNew, selectedObjectOld) => {
-            transformControls.removeEventListener('objectChange', onSelectedObjectDrug)
-
-            if (selectedObjectNew) {
-                physic.value.enableMeshPhysics(selectedObjectNew)
-
-                transformControls.attach(selectedObjectNew)
-                lastTransformMatrix4.copy(selectedObjectNew.matrix)
-                lastTransformObject = selectedObjectNew
-
-                transformControls.addEventListener('objectChange', onSelectedObjectDrug)
-            } else {
-                transformControls.detach()
-
-                if (selectedObjectOld) {
-                    physic.value.disableMeshPhysics(selectedObjectOld)
-                }
-            }
-        })
-
-        useEventListener(window, 'keydown', event => {
-            if (event.key === 'g') {
-                transformControls.setMode('translate')
-            }
-            if (event.key === 'r') {
-                transformControls.setMode('rotate')
-            }
-            if (event.key === 's') {
-                transformControls.setMode('scale')
-            }
-
-            if (event.key === 'Delete') {
-                transformControls.detach()
-                selectedObject.value.removeFromParent()
-                selectedObject.value = undefined
-            }
-
-            if (event.key === 'Escape') {
-                transformControls.detach()
-                selectedObject.value = undefined
-            }
-
-            if (event.ctrlKey && event.key === 'z' && lastTransformMatrix4 && lastTransformObject) {
-                lastTransformObject.matrix.copy(lastTransformMatrix4)
-                lastTransformObject.matrix.decompose(
-                    lastTransformObject.position,
-                    lastTransformObject.quaternion,
-                    lastTransformObject.scale
-                )
-            }
-        })
-
-        useEventListener(window, 'pointerdown', event => {
-            if (objects.value.length === 0) return
-
-            const raycaster = new Raycaster()
-            const mouse = new Vector2()
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
-
-            raycaster.setFromCamera(mouse, camera)
-            const intersects = raycaster.intersectObjects(objects.value)
-
-            if (intersects.length === 0) return
-
-            const hitObject = intersects[0].object
-            const rootObject = findRootParentInList(hitObject, objects.value)
-
-            if (!rootObject) return
-
-            if (selectedObject.value && rootObject.uuid === selectedObject.value.uuid) {
-                if (transformControls.dragging) return
-                selectedObject.value = undefined
-            } else {
-                selectedObject.value = rootObject
-            }
-        })
 
         return {
-            selectedObject,
+            physic,
         }
     })()
+
+    const { objects, addCube } = (function useObjectLoader() {
+        const objectBuffer = shallowRef<Buffer<ArrayBufferLike>>()
+        const objects = ref<Object3D[]>([])
+
+        const loader = new GLTFLoader()
+        const initialPosition = new Vector3(0, 2, 0)
+
+        windowAPI.dialogResponseObject((_, response) => {
+            objectBuffer.value = response
+        })
+
+        watch(objectBuffer, async () => {
+            if (!objectBuffer.value) return
+
+            loader.parse(
+                new Uint8Array(objectBuffer.value).buffer,
+                '',
+                gltf => {
+                    for (const object of gltf.scene.children) {
+                        object.position.copy(initialPosition)
+
+                        objects.value.push(object)
+                        physic.value?.addMesh(object, 0.01, 0, scene)
+                        scene.add(object)
+                    }
+                },
+                err => {
+                    console.log(err)
+                }
+            )
+        })
+
+        function addCube() {
+            const cubeGeometry = new BoxGeometry(1, 1, 1)
+            const cubeMaterial = new MeshPhysicalMaterial()
+            cubeMaterial.name = 'MeshPhysicalMaterial'
+
+            const cube = new Mesh(cubeGeometry, cubeMaterial)
+            cube.name = 'Cube'
+
+            cube.receiveShadow = true
+            cube.castShadow = true
+
+            cube.position.copy(initialPosition)
+            objects.value.push(cube)
+            physic.value?.addMesh(cube, 0.01, 0, scene)
+            scene.add(cube)
+        }
+
+        return {
+            objects,
+            addCube,
+        }
+    })()
+
+    const { selectedObject, onGUIThreeObjectHoverIn, onGUIThreeObjectHoverOut } =
+        (function useThreeControls() {
+            const selectedObject = ref<Object3D>()
+
+            const lastTransformMatrix4 = new Matrix4()
+            let lastTransformObject: Object3D | undefined = undefined
+
+            function findRootParentInList(object: Object3D, list: Object3D[]): Object3D | null {
+                let current: Object3D | null = object
+                while (current) {
+                    if (list.includes(current)) return current
+                    current = current.parent
+                }
+                return null
+            }
+
+            const onGUIThreeObjectHoverIn = (object: Object3D) => {
+                // if (outlinePass && outlinePass.selectedObjects[0] !== object) {
+                //     object.renderOrder = 1
+                //     outlinePass.selectedObjects = [object] // один или несколько
+                // }
+            }
+
+            const onGUIThreeObjectHoverOut = () => {
+                // if (outlinePass) {
+                //     outlinePass.selectedObjects = [] // один или несколько
+                // }
+            }
+
+            const onSelectedObjectDrug = () => {
+                if (!selectedObject.value) {
+                    return
+                }
+
+                const pos = selectedObject.value.position
+                const quat = selectedObject.value.quaternion
+
+                physic.value.setMeshKinematicMatrix(selectedObject.value, pos, quat)
+            }
+
+            watch(selectedObject, (selectedObjectNew, selectedObjectOld) => {
+                transformControls.removeEventListener('objectChange', onSelectedObjectDrug)
+
+                if (selectedObjectNew) {
+                    if (physic.value.isMeshPhysicEnable(selectedObjectNew)) {
+                        physic.value.enableMeshPhysics(selectedObjectNew)
+                        transformControls.addEventListener('objectChange', onSelectedObjectDrug)
+                    }
+
+                    transformControls.attach(selectedObjectNew)
+                    lastTransformMatrix4.copy(selectedObjectNew.matrix)
+                    lastTransformObject = selectedObjectNew
+                } else {
+                    transformControls.detach()
+
+                    if (selectedObjectOld && physic.value.isMeshPhysicEnable(selectedObjectOld)) {
+                        physic.value.disableMeshPhysics(selectedObjectOld)
+                    }
+                }
+            })
+
+            useEventListener(window, 'keydown', event => {
+                if (event.key === 'g') {
+                    transformControls.setMode('translate')
+                }
+                if (event.key === 'r') {
+                    transformControls.setMode('rotate')
+                }
+                if (event.key === 's') {
+                    transformControls.setMode('scale')
+                }
+
+                if (event.key === 'Delete') {
+                    transformControls.detach()
+                    selectedObject.value.removeFromParent()
+                    selectedObject.value = undefined
+                }
+
+                if (event.key === 'Escape') {
+                    transformControls.detach()
+                    selectedObject.value = undefined
+                }
+
+                if (
+                    event.ctrlKey &&
+                    event.key === 'z' &&
+                    lastTransformMatrix4 &&
+                    lastTransformObject
+                ) {
+                    lastTransformObject.matrix.copy(lastTransformMatrix4)
+                    lastTransformObject.matrix.decompose(
+                        lastTransformObject.position,
+                        lastTransformObject.quaternion,
+                        lastTransformObject.scale
+                    )
+                }
+            })
+
+            useEventListener(window, 'pointerdown', event => {
+                if (objects.value.length === 0) return
+
+                const raycaster = new Raycaster()
+                const mouse = new Vector2()
+
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1
+
+                raycaster.setFromCamera(mouse, camera)
+                const intersects = raycaster.intersectObjects(objects.value)
+
+                if (intersects.length === 0) return
+
+                const hitObject = intersects[0].object
+                const rootObject = findRootParentInList(hitObject, objects.value)
+
+                if (!rootObject) return
+
+                if (selectedObject.value && rootObject.uuid === selectedObject.value.uuid) {
+                    if (transformControls.dragging) return
+                    selectedObject.value = undefined
+                } else {
+                    selectedObject.value = rootObject
+                }
+            })
+
+            return {
+                selectedObject,
+                onGUIThreeObjectHoverIn,
+                onGUIThreeObjectHoverOut,
+            }
+        })()
 
     function convertToJson() {
         transformControls.detach()
@@ -320,6 +380,8 @@ export const useThreeStore = defineStore('three', () => {
 
         convertToJson,
         addCube,
+        onGUIThreeObjectHoverIn,
+        onGUIThreeObjectHoverOut,
     }
 })
 

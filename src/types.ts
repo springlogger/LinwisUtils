@@ -8,3 +8,7 @@ export type TodoItem = {
     completedTime?: Date
     id?: number
 }
+
+export type openDialogFileType = 'Object' | 'Material'
+
+export type openDialogTextureType = 'albedo' | 'normal' | 'metalness' | 'roughness' | 'sheen'

@@ -349,6 +349,10 @@ export async function usePhysic() {
         }
     }
 
+    function isMeshPhysicEnable(object: Object3D) {
+        return meshMap.get(object.uuid) !== undefined
+    }
+
     return {
         addMesh,
         setMeshPosition,
@@ -357,5 +361,6 @@ export async function usePhysic() {
         disableMeshPhysics,
         enableMeshPhysics,
         setMeshKinematicMatrix,
+        isMeshPhysicEnable,
     }
 }

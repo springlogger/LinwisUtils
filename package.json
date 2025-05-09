@@ -50,6 +50,7 @@
     "@tailwindcss/postcss": "^4.0.9",
     "@types/three": "^0.174.0",
     "@vueuse/core": "^12.8.0",
+    "electron-is-dev": "^3.0.1",
     "electron-squirrel-startup": "^1.0.1",
     "pinia": "^3.0.1",
     "postcss": "^8.5.3",

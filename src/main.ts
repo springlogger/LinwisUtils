@@ -4,6 +4,8 @@ import started from 'electron-squirrel-startup'
 import fs from 'fs'
 import { MyAPI } from './api'
 import { registerIpcHandlers } from './api/helper'
+import isDev from 'electron-is-dev'
+import { openDialogFileType, openDialogTextureType } from './types'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -50,20 +52,27 @@ const createWindow = () => {
     MyAPI.init(mainWindow)
     registerIpcHandlers()
 
-    ipcMain.on('openDialog', async () => {
-        const pathToObject = await dialog.showOpenDialog({ properties: ['openFile'] })
+    ipcMain.on(
+        'openDialog',
+        async (_, fileType: openDialogFileType, textureType?: openDialogTextureType) => {
+            const pathToObject = await dialog.showOpenDialog({ properties: ['openFile'] })
 
-        if (!pathToObject.filePaths[0]) return
+            if (!pathToObject.filePaths[0]) return
 
-        fs.readFile(pathToObject.filePaths[0], (err, data) => {
-            if (err) {
-                console.error(err)
-                return
-            }
+            fs.readFile(pathToObject.filePaths[0], (err, data) => {
+                if (err) {
+                    console.error(err)
+                    return
+                }
 
-            mainWindow.webContents.send('dialogResponse', data)
-        })
-    })
+                if (fileType === 'Material') {
+                    mainWindow.webContents.send(`dialogResponse${fileType}`, data, textureType)
+                } else if (fileType === 'Object') {
+                    mainWindow.webContents.send(`dialogResponse${fileType}`, data)
+                }
+            })
+        }
+    )
 
     ipcMain.on('openSaveDialog', async (_, savedScene: JSON) => {
         const { filePath } = await dialog.showSaveDialog({
@@ -81,7 +90,9 @@ const createWindow = () => {
     })
 
     // Open the DevTools.
-    mainWindow.webContents.openDevTools()
+    if (isDev) {
+        mainWindow.webContents.openDevTools()
+    }
 }
 
 app.on('ready', () => {

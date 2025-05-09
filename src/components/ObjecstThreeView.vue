@@ -19,6 +19,8 @@ const expanded = ref(false);
 <template>
     <tr 
         @click="selectedObject = object" 
+        @mouseenter="three.onGUIThreeObjectHoverIn(object)"
+        @mouseleave="three.onGUIThreeObjectHoverOut"
         class="cursor-pointer"
         :class="{
             'bg-blue-900 hover:bg-blue-800': selectedObject && selectedObject.uuid === object.uuid,
